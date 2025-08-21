@@ -1,24 +1,27 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
 import { getTodos, getProjects } from "../services/api";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:1337";
+
 export default function Todos() {
   const { token } = useContext(AuthContext);
+
   const [todos, setTodos] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTodoDocId, setEditingTodoDocId] = useState(null);
-  const [editingTodoOriginalProject, setEditingTodoOriginalProject] = useState(null);
-  const [setError] = useState(null);
+  const [error, setError] = useState(null);
+
   const [filters, setFilters] = useState({
     position: "All",
     project: "All",
     assignee: "All",
     dateFrom: "",
     dateTo: "",
-    searchText: ""
+    searchText: "",
   });
 
   const [form, setForm] = useState({
@@ -32,48 +35,43 @@ export default function Todos() {
     historyNote: "",
   });
 
+  // Stable, lint-safe data loader
+  const fetchData = useCallback(async () => {
+    try {
+      const [todosRes, projectsRes] = await Promise.all([getTodos(), getProjects()]);
+      setTodos(todosRes.data?.data || []);
+      setProjects(projectsRes.data?.data || []);
+    } catch {
+      setError("Failed to load todos/projects");
+    }
+
+    try {
+      if (!token) {
+        setUsers([]);
+        return;
+      }
+      const res = await axios.get(`${API_URL}/api/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUsers(res.data || []);
+    } catch (err) {
+      setError("Failed to load users");
+    }
+  }, [token]);
+
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
-  const fetchData = () => {
-    getTodos()
-  .then((res) => {
-    setTodos(res.data?.data || []);
-  })
-  .catch(() => setError("Failed to load todos"));
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
 
-
-    getProjects()
-      .then((res) => setProjects(res.data?.data || []))
-      .catch((err) => console.error("Error fetching projects", err));
-      console.log("Token:", token);
-    axios
-      .get("http://localhost:1337/api/users", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => setUsers(res.data || []))
-      .catch((err) => {
-        console.error("Error fetching users:", err.response?.data || err.message || err);
-      });
-  };
-
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleFilterChange = (e) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const selectedProject = projects.find(
       (proj) => proj.documentId === form.project || proj.id?.toString() === form.project
     );
-
-    const projectIdToSend = form.project || editingTodoOriginalProject;
 
     const payload = {
       title: form.title,
@@ -88,37 +86,34 @@ export default function Todos() {
 
     const isEditing = !!editingTodoDocId;
     const url = isEditing
-      ? `http://localhost:1337/api/todos/${editingTodoDocId}`
-      : "http://localhost:1337/api/todos";
+      ? `${API_URL}/api/todos/${editingTodoDocId}`
+      : `${API_URL}/api/todos`;
 
-    fetch(url, {
-      method: isEditing ? "PUT" : "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ data: payload }),
-    })
-      .then(() => {
-        fetchData();
-        setForm({
-          title: "",
-          description: "",
-          descriptionHistory: "",
-          dueDate: "",
-          position: "todo",
-          project: "",
-          assignee: "",
-          historyNote: "",
-        });
-        setEditingTodoDocId(null);
-        setEditingTodoOriginalProject(null);
-        setModalOpen(false);
-      })
-      .catch((err) => {
-        console.error("❌ Failed to save ToDo:", err);
-        setError("Failed to save ToDo.");
+    try {
+      await fetch(url, {
+        method: isEditing ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ data: payload }),
       });
+      await fetchData();
+      setForm({
+        title: "",
+        description: "",
+        descriptionHistory: "",
+        dueDate: "",
+        position: "todo",
+        project: "",
+        assignee: "",
+        historyNote: "",
+      });
+      setEditingTodoDocId(null);
+      setModalOpen(false);
+    } catch (err) {
+      setError("Failed to save ToDo.");
+    }
   };
 
   const handleEdit = (todo) => {
@@ -133,18 +128,20 @@ export default function Todos() {
       historyNote: "",
     });
     setEditingTodoDocId(todo.documentId);
-    setEditingTodoOriginalProject(todo.project?.id?.toString() || "");
     setModalOpen(true);
   };
 
-  const handleDelete = (documentId) => {
+  const handleDelete = async (documentId) => {
     if (!window.confirm("Are you sure you want to delete this ToDo?")) return;
-    fetch(`http://localhost:1337/api/todos/${documentId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(() => fetchData())
-      .catch((err) => console.error("❌ Failed to delete ToDo:", err));
+    try {
+      await fetch(`${API_URL}/api/todos/${documentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await fetchData();
+    } catch {
+      setError("Failed to delete ToDo.");
+    }
   };
 
   const getStatusBadge = (position) => {
@@ -172,33 +169,23 @@ export default function Todos() {
 
   const filteredTodos = todos
     .filter((todo) => {
-      const matchPosition =
-        filters.position === "All" || todo.position === filters.position;
-        const matchProject =
+      const matchPosition = filters.position === "All" || todo.position === filters.position;
+      const matchProject =
         filters.project === "All" ||
         todo.project?.documentId === filters.project ||
-        todo.project?.id?.toString() === filters.project;      
+        todo.project?.id?.toString() === filters.project;
       const matchAssignee =
-        filters.assignee === "All" ||
-        todo.assignee?.id?.toString() === filters.assignee;
-      const matchDateFrom =
-        !filters.dateFrom || new Date(todo.dueDate) >= new Date(filters.dateFrom);
-      const matchDateTo =
-        !filters.dateTo || new Date(todo.dueDate) <= new Date(filters.dateTo);
+        filters.assignee === "All" || todo.assignee?.id?.toString() === filters.assignee;
+      const matchDateFrom = !filters.dateFrom || new Date(todo.dueDate) >= new Date(filters.dateFrom);
+      const matchDateTo = !filters.dateTo || new Date(todo.dueDate) <= new Date(filters.dateTo);
+      const search = filters.searchText.toLowerCase();
       const matchSearch =
-        !filters.searchText ||
-        todo.title?.toLowerCase().includes(filters.searchText.toLowerCase()) ||
-        todo.description?.toLowerCase().includes(filters.searchText.toLowerCase()) ||
-        todo.descriptionHistory?.toLowerCase().includes(filters.searchText.toLowerCase());
+        !search ||
+        todo.title?.toLowerCase().includes(search) ||
+        todo.description?.toLowerCase().includes(search) ||
+        todo.descriptionHistory?.toLowerCase().includes(search);
 
-      return (
-        matchPosition &&
-        matchProject &&
-        matchAssignee &&
-        matchDateFrom &&
-        matchDateTo &&
-        matchSearch
-      );
+      return matchPosition && matchProject && matchAssignee && matchDateFrom && matchDateTo && matchSearch;
     })
     .sort((a, b) => {
       if (a.position === "done" && b.position !== "done") return 1;
@@ -208,59 +195,51 @@ export default function Todos() {
 
   return (
     <div className="p-6">
+      {error && (
+        <div className="mb-4 p-2 rounded bg-red-100 text-red-700 text-sm">{error}</div>
+      )}
+
       <div className="mb-4 flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Todos</h2>
-        <button onClick={() => {
-          setEditingTodoDocId(null);
-          setForm({
-            title: "",
-            description: "",
-            descriptionHistory: "",
-            dueDate: "",
-            position: "todo",
-            project: "",
-            assignee: "",
-            historyNote: "",
-          });
-          setModalOpen(true);
-        }} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        <button
+          onClick={() => {
+            setEditingTodoDocId(null);
+            setForm({
+              title: "",
+              description: "",
+              descriptionHistory: "",
+              dueDate: "",
+              position: "todo",
+              project: "",
+              assignee: "",
+              historyNote: "",
+            });
+            setModalOpen(true);
+          }}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
           + Add ToDo
         </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <select
-          name="position"
-          value={filters.position}
-          onChange={handleFilterChange}
-          className="p-2 border rounded"
-        >
+        <select name="position" value={filters.position} onChange={handleFilterChange} className="p-2 border rounded">
           <option value="All">All Statuses</option>
           <option value="todo">Todo</option>
           <option value="in-progress">In Progress</option>
           <option value="done">Done</option>
         </select>
 
-        <select
-          name="project"
-          value={filters.project}
-          onChange={handleFilterChange}
-          className="p-2 border rounded"
-        >
+        <select name="project" value={filters.project} onChange={handleFilterChange} className="p-2 border rounded">
           <option value="All">All Projects</option>
           {projects.map((proj) => (
-            <option key={proj.documentId} value={proj.documentId}>
+            <option key={proj.documentId || proj.id} value={proj.documentId || proj.id}>
               {proj.name}
             </option>
           ))}
         </select>
 
-        <select
-          name="assignee"
-          value={filters.assignee}
-          onChange={handleFilterChange}
-          className="p-2 border rounded"
-        >
+        <select name="assignee" value={filters.assignee} onChange={handleFilterChange} className="p-2 border rounded">
           <option value="All">All Assignees</option>
           {users.map((user) => (
             <option key={user.id} value={user.id}>
@@ -278,21 +257,8 @@ export default function Todos() {
           className="p-2 border rounded"
         />
 
-        <input
-          type="date"
-          name="dateFrom"
-          value={filters.dateFrom}
-          onChange={handleFilterChange}
-          className="p-2 border rounded"
-        />
-
-        <input
-          type="date"
-          name="dateTo"
-          value={filters.dateTo}
-          onChange={handleFilterChange}
-          className="p-2 border rounded"
-        />
+        <input type="date" name="dateFrom" value={filters.dateFrom} onChange={handleFilterChange} className="p-2 border rounded" />
+        <input type="date" name="dateTo" value={filters.dateTo} onChange={handleFilterChange} className="p-2 border rounded" />
       </div>
 
       <ul className="space-y-2">
@@ -318,46 +284,70 @@ export default function Todos() {
                 )}
               </div>
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                <button onClick={() => handleEdit(todo)} className="text-blue-600 text-sm">Edit</button>
-                <button onClick={() => handleDelete(todo.documentId)} className="text-red-600 text-sm">Delete</button>
+                <button onClick={() => handleEdit(todo)} className="text-blue-600 text-sm">
+                  Edit
+                </button>
+                <button onClick={() => handleDelete(todo.documentId)} className="text-red-600 text-sm">
+                  Delete
+                </button>
               </div>
             </div>
           </li>
         ))}
       </ul>
 
-       {modalOpen && (
+      {modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-center items-center p-4 sm:p-6 overflow-y-auto">
           <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
-            <button onClick={() => setModalOpen(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl">&times;</button>
+            <button onClick={() => setModalOpen(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl">
+              &times;
+            </button>
             <h2 className="text-xl font-semibold mb-4">{editingTodoDocId ? "Edit ToDo" : "Add ToDo"}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <input name="title" value={form.title} onChange={handleChange} required placeholder="Title" className="w-full p-2 border rounded" />
               <textarea name="description" value={form.description} onChange={handleChange} rows={3} required placeholder="Main description" className="w-full p-2 border rounded" />
               <div>
                 <div className="flex gap-2 mb-2">
-                  <input type="text" placeholder="Add to description history..." className="w-full p-2 border rounded" value={form.historyNote} onChange={(e) => setForm((prev) => ({ ...prev, historyNote: e.target.value }))} />
-                  <button type="button" onClick={() => {
-                    if (!form.historyNote.trim()) return;
-                    const timestamp = new Date().toLocaleString();
-                    const newEntry = `[${timestamp}] ${form.historyNote.trim()}`;
-                    setForm((prev) => ({
-                      ...prev,
-                      descriptionHistory: prev.descriptionHistory ? `${prev.descriptionHistory}\n${newEntry}` : newEntry,
-                      historyNote: "",
-                    }));
-                  }} className="bg-gray-300 hover:bg-gray-400 px-3 py-1 rounded">➕</button>
+                  <input
+                    type="text"
+                    placeholder="Add to description history..."
+                    className="w-full p-2 border rounded"
+                    value={form.historyNote}
+                    onChange={(e) => setForm((prev) => ({ ...prev, historyNote: e.target.value }))}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!form.historyNote.trim()) return;
+                      const timestamp = new Date().toLocaleString();
+                      const newEntry = `[${timestamp}] ${form.historyNote.trim()}`;
+                      setForm((prev) => ({
+                        ...prev,
+                        descriptionHistory: prev.descriptionHistory ? `${prev.descriptionHistory}\n${newEntry}` : newEntry,
+                        historyNote: "",
+                      }));
+                    }}
+                    className="bg-gray-300 hover:bg-gray-400 px-3 py-1 rounded"
+                  >
+                    ➕
+                  </button>
                 </div>
                 {form.descriptionHistory && (
                   <div className="bg-gray-50 border p-2 rounded text-sm max-h-40 overflow-y-auto whitespace-pre-line">
                     <strong className="block mb-1">📜 Description History:</strong>
-                    {form.descriptionHistory.split('\n').map((entry, i) => (
+                    {form.descriptionHistory.split("\n").map((entry, i) => (
                       <div key={i} className="flex justify-between items-center">
                         <span>{entry}</span>
-                        <button className="text-red-500 text-xs ml-2" onClick={() => {
-                          const updated = form.descriptionHistory.split('\n').filter((_, idx) => idx !== i).join('\n');
-                          setForm((prev) => ({ ...prev, descriptionHistory: updated }));
-                        }}>Remove</button>
+                        <button
+                          type="button"
+                          className="text-red-500 text-xs ml-2"
+                          onClick={() => {
+                            const updated = form.descriptionHistory.split("\n").filter((_, idx) => idx !== i).join("\n");
+                            setForm((prev) => ({ ...prev, descriptionHistory: updated }));
+                          }}
+                        >
+                          Remove
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -372,16 +362,22 @@ export default function Todos() {
               <select name="project" value={form.project} onChange={handleChange} className="w-full p-2 border rounded">
                 <option value="">Select Project</option>
                 {projects.map((proj) => (
-                  <option key={proj.id} value={proj.id}>{proj.name}</option>
+                  <option key={proj.id} value={proj.id}>
+                    {proj.name}
+                  </option>
                 ))}
               </select>
               <select name="assignee" value={form.assignee} onChange={handleChange} className="w-full p-2 border rounded">
                 <option value="">Assign to User</option>
                 {users.map((user) => (
-                  <option key={user.id} value={user.id}>{user.username}</option>
+                  <option key={user.id} value={user.id}>
+                    {user.username}
+                  </option>
                 ))}
               </select>
-              <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded w-full">{editingTodoDocId ? "Update" : "Add"} ToDo</button>
+              <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded w-full">
+                {editingTodoDocId ? "Update" : "Add"} ToDo
+              </button>
             </form>
           </div>
         </div>
