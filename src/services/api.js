@@ -1,8 +1,16 @@
 import axios from "axios";
 
-const API = axios.create({ baseURL: "http://localhost:1337/api" });
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:1337";
 
-export const getProjects = () => API.get("/projects?pagination[pageSize]=1000&populate=*");
-export const getTodos = () => API.get("/todos?pagination[pageSize]=1000&populate=*");
+const API = axios.create({ baseURL: `${API_URL}/api` });
+
+export const getProjects = () =>
+  API.get("/projects?pagination[pageSize]=1000&populate=*");
+
+export const getTodos = () =>
+  API.get("/todos?pagination[pageSize]=1000&populate=*");
+
 export const getTeamMembers = () => API.get("/team-members");
-export const getClients = () => API.get("/clients?pagination[pageSize]=1000&populate=*");
+
+export const getClients = () =>
+  API.get("/clients?pagination[pageSize]=1000&populate=*");
