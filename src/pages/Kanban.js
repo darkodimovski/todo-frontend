@@ -3,6 +3,8 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import axios from "axios";
 import { getTodos } from "../services/api";
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:1337";
+
 export default function Kanban() {
   const [todos, setTodos] = useState({
     todo: [],
@@ -67,7 +69,7 @@ export default function Kanban() {
 
     try {
       const newPosition = destination.droppableId;
-      const url = `http://localhost:1337/api/todos/${todoDocumentId}`;
+      const url = `${API_URL}/api/todos/${todoDocumentId}`;
 
       await axios.put(url, {
         data: { position: newPosition },

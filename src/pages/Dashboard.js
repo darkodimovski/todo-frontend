@@ -3,6 +3,9 @@ import axios from "axios";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { CSVLink } from "react-csv";
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:1337";
+
+
 export default function Dashboard() {
   const [projects, setProjects] = useState([]);
   const [todos, setTodos] = useState([]);
@@ -11,9 +14,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     Promise.all([
-      axios.get("http://localhost:1337/api/projects"),
-      axios.get("http://localhost:1337/api/todos?populate=*"),
-      axios.get("http://localhost:1337/api/users"),
+      axios.get(`${API_URL}/api/projects`),
+      axios.get(`${API_URL}/api/todos?populate=*`),
+      axios.get(`${API_URL}/api/users`),
     ]).then(([projectRes, todoRes, userRes]) => {
       const fetchedProjects = projectRes.data.data || [];
       const fetchedTodos = todoRes.data.data || [];

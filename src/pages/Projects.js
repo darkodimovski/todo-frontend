@@ -1,7 +1,9 @@
-import React, { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext } from "react";
 import * as XLSX from "xlsx";
 import { getProjects, getClients, getTodos } from "../services/api";
 import { AuthContext } from "../context/AuthContext";
+
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:1337";
 
 export default function Projects() {
   const { role, token } = useContext(AuthContext);
@@ -123,7 +125,7 @@ export default function Projects() {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this project?")) return;
     try {
-      await fetch(`http://localhost:1337/api/projects/${id}`, {
+      await fetch(`${API_URL}/api/projects/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -272,8 +274,8 @@ export default function Projects() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const url = editingProjectId
-                  ? `http://localhost:1337/api/projects/${editingProjectId}`
-                  : "http://localhost:1337/api/projects";
+                  ? `${API_URL}/api/projects/${editingProjectId}`
+                  : `${API_URL}/api/projects`;
 
                 const payload = {
                   name: form.name,
