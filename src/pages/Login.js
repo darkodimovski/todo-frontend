@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:1337";
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,7 +17,7 @@ export default function Login() {
     setLoading(true);
     try {
       // Step 1: Authenticate
-      const res = await axios.post("http://localhost:1337/api/auth/local", {
+      const res = await axios.post(`${API_URL}/api/auth/local`, {
         identifier: email,
         password,
       });
@@ -25,7 +27,7 @@ export default function Login() {
 
       // Step 2: Fetch full user details (with role)
       const fullUserRes = await axios.get(
-        `http://localhost:1337/api/users/${user.id}?populate=role`,
+        `${API_URL}/api/users/${user.id}?populate=role`,
         {
           headers: {
             Authorization: `Bearer ${jwt}`,
