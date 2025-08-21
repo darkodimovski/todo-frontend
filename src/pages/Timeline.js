@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   format,
   addDays,
@@ -32,9 +32,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 
 const Timeline = () => {
-
   const [projects, setProjects] = useState([]);
-  const [setTodos] = useState([]);
   const [clients, setClients] = useState([]);
   const [zoom, setZoom] = useState(1);
   const [view, setView] = useState("month");
@@ -45,11 +43,8 @@ const Timeline = () => {
   const [expandedClients, setExpandedClients] = useState({});
   const [selectedProject, setSelectedProject] = useState(null);
 
-  useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
-
-  const fetchAllData = async () => {
+  // ✅ stable fetch function
+  const fetchAllData = useCallback(async () => {
     const [projectRes, clientRes, todoRes] = await Promise.all([
       getProjects(),
       getClients(),
@@ -57,6 +52,7 @@ const Timeline = () => {
     ]);
 
     const fetchedTodos = todoRes.data.data;
+
     const fetchedProjects = projectRes.data.data.map((project) => {
       const relatedTodos = fetchedTodos.filter((todo) => todo.project?.id === project.id);
       const allDone = relatedTodos.length > 0 && relatedTodos.every((todo) => todo.position === "done");
@@ -74,10 +70,13 @@ const Timeline = () => {
       return { ...project, position: newPosition, todos: relatedTodos, progress };
     });
 
-    setTodos(fetchedTodos);
     setProjects(fetchedProjects);
     setClients(clientRes.data.data);
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   const getVisibleRange = () => {
     return view === "month"
