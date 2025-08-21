@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import { useEffect, useState } from "react";
 import {
   format,
   addDays,
@@ -26,7 +26,6 @@ import {
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import { AuthContext } from "../context/AuthContext";
 import { getProjects, getClients, getTodos } from "../services/api";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -48,7 +47,7 @@ const Timeline = () => {
 
   useEffect(() => {
     fetchAllData();
-  }, []);
+  }, [fetchAllData]);
 
   const fetchAllData = async () => {
     const [projectRes, clientRes, todoRes] = await Promise.all([
