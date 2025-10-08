@@ -13,7 +13,6 @@ export const AuthProvider = ({ children }) => {
   });
   const [role, setRole] = useState(localStorage.getItem("role"));
 
-  // Helper to sync localStorage
   const updateStorage = (key, value) => {
     if (value) localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
     else localStorage.removeItem(key);
@@ -23,7 +22,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => updateStorage("user", user), [user]);
   useEffect(() => updateStorage("role", role), [role]);
 
-  // ✅ Central logout handler
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -37,5 +35,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// ✅ Optional helper for role checking
+
 export const isSuperUser = (role) => role === "Super Admin";

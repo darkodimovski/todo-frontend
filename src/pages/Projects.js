@@ -28,6 +28,16 @@ export default function Projects() {
     fetchAllData();
   }, []);
 
+  const handleChange = (e) => {
+    const { name, value, multiple, options } = e.target;
+    if (multiple) {
+      const values = Array.from(options).filter((o) => o.selected).map((o) => o.value);
+      setForm({ ...form, [name]: values });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
+  };
+
   const fetchAllData = async () => {
     const [projectRes, clientRes, todoRes] = await Promise.all([
       getProjects(),
@@ -47,7 +57,7 @@ export default function Projects() {
       else if (anyInProgress) newPosition = "In-Progress";
       else if (anyTodo) newPosition = "Todo";
 
-      return { ...project, position: newPosition };
+      return { ...project, position: newPosition, todos: relatedTodos };
     });
 
     setTodos(fetchedTodos);
@@ -98,28 +108,64 @@ export default function Projects() {
   };
 
   const handleEdit = (proj) => {
-  setForm({
-    name: proj.name || "",
-    description: proj.description || "",
-    clients: proj.clients?.map((c) => c.documentId) || [],
-    startDate: proj.startDate || "",
-    endDate: proj.endDate || "",
-  });
-  setEditingProjectId(proj.documentId);
-  setModalOpen(true);
-};
-
-
-  const handleClone = (proj) => {
     setForm({
-      name: `${proj.name} (Copy)` || "",
+      name: proj.name || "",
       description: proj.description || "",
       clients: proj.clients?.map((c) => c.documentId) || [],
       startDate: proj.startDate || "",
       endDate: proj.endDate || "",
     });
-    setEditingProjectId(null);
+    setEditingProjectId(proj.documentId);
     setModalOpen(true);
+  };
+
+  const handleClone = async (proj) => {
+    try {
+      // Create new project first
+      const newProjectRes = await fetch(`${API_URL}/api/projects`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          data: {
+            name: `${proj.name} (Copy)`,
+            description: proj.description,
+            clients: proj.clients.map((c) => c.documentId),
+            startDate: proj.startDate,
+            endDate: proj.endDate,
+          },
+        }),
+      });
+      const newProject = await newProjectRes.json();
+
+      // Duplicate todos into new project
+      const relatedTodos = todos.filter((t) => t.project?.id === proj.id);
+      for (let todo of relatedTodos) {
+        await fetch(`${API_URL}/api/todos`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            data: {
+              title: todo.title,
+              description: todo.description,
+              dueDate: todo.dueDate,
+              position: todo.position,
+              assignee: todo.assignee?.id,
+              project: newProject.data.id, // link to new project
+            },
+          }),
+        });
+      }
+
+      fetchAllData();
+    } catch (err) {
+      console.error("Failed to clone project:", err);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -215,7 +261,12 @@ export default function Projects() {
             }, {});
 
             return (
-              <li key={proj.documentId} className={`border p-4 rounded shadow cursor-pointer transition ${getStatusColor(proj.position)}`}>
+              <li
+                key={proj.documentId}
+                className={`border p-4 rounded shadow cursor-pointer transition ${getStatusColor(
+                  proj.position
+                )}`}
+              >
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="font-bold text-lg">{proj.name}</h3>
@@ -223,9 +274,12 @@ export default function Projects() {
                     <p className="text-sm text-gray-800 mt-1">
                       Clients: {proj.clients?.map((c) => c.Client).join(", ") || "N/A"}
                     </p>
-                    <p className="text-sm text-gray-800">Start: {proj.startDate} - End: {proj.endDate}</p>
+                    <p className="text-sm text-gray-800">
+                      Start: {proj.startDate} - End: {proj.endDate}
+                    </p>
                     <p className="text-sm mt-1">
-                      📝 Todos: {projectTodos.length} | ✅ Done: {statusCount["done"] || 0} | 🔄 In Progress: {statusCount["in-progress"] || 0} | 📌 Todo: {statusCount["todo"] || 0}
+                      📝 Todos: {projectTodos.length} | ✅ Done: {statusCount["done"] || 0} | 🔄 In
+                      Progress: {statusCount["in-progress"] || 0} | 📌 Todo: {statusCount["todo"] || 0}
                     </p>
                     <button
                       className="text-sm text-blue-600 underline mt-2"
@@ -246,9 +300,18 @@ export default function Projects() {
 
                     {isSuperAdmin && (
                       <div className="flex gap-2 mt-2">
-                        <button onClick={() => handleEdit(proj)} className="text-blue-600 text-sm underline">Edit</button>
-                        <button onClick={() => handleClone(proj)} className="text-yellow-600 text-sm underline">Clone</button>
-                        <button onClick={() => handleDelete(proj.documentId)} className="text-red-600 text-sm underline">Delete</button>
+                        <button onClick={() => handleEdit(proj)} className="text-blue-600 text-sm underline">
+                          Edit
+                        </button>
+                        <button onClick={() => handleClone(proj)} className="text-yellow-600 text-sm underline">
+                          Clone
+                        </button>
+                        <button
+                          onClick={() => handleDelete(proj.documentId)}
+                          className="text-red-600 text-sm underline"
+                        >
+                          Delete
+                        </button>
                       </div>
                     )}
                   </div>
@@ -271,8 +334,9 @@ export default function Projects() {
               {editingProjectId ? "Edit Project" : "Add Project"}
             </h2>
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
+
                 const url = editingProjectId
                   ? `${API_URL}/api/projects/${editingProjectId}`
                   : `${API_URL}/api/projects`;
@@ -285,21 +349,31 @@ export default function Projects() {
                   endDate: form.endDate,
                 };
 
-                fetch(url, {
-                  method: editingProjectId ? "PUT" : "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                  },
-                  body: JSON.stringify({ data: payload }),
-                })
-                  .then(() => fetchAllData())
-                  .then(() => {
-                    setModalOpen(false);
-                    setForm({ name: "", description: "", clients: [], startDate: "", endDate: "" });
-                    setEditingProjectId(null);
-                  })
-                  .catch(console.error);
+                // preserve todos on edit
+                if (editingProjectId) {
+                  const projectToEdit = projects.find((p) => p.documentId === editingProjectId);
+                  if (projectToEdit?.todos) {
+                    payload.todos = projectToEdit.todos.map((t) => t.documentId);
+                  }
+                }
+
+                try {
+                  await fetch(url, {
+                    method: editingProjectId ? "PUT" : "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ data: payload }),
+                  });
+
+                  await fetchAllData();
+                  setModalOpen(false);
+                  setForm({ name: "", description: "", clients: [], startDate: "", endDate: "" });
+                  setEditingProjectId(null);
+                } catch (err) {
+                  console.error("Failed to save project:", err);
+                }
               }}
               className="space-y-4"
             >
@@ -318,6 +392,34 @@ export default function Projects() {
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 required
               />
+                <div className="border rounded p-3 max-h-40 overflow-y-auto space-y-2">
+                <p className="text-sm font-medium text-gray-700 mb-2">Select Clients</p>
+                {clients.map((client) => (
+                  <label
+                    key={client.documentId || client.id}
+                    className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
+                  >
+                    <input
+                      type="checkbox"
+                      value={client.documentId || client.id}
+                      checked={form.clients.includes(client.documentId || client.id)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (form.clients.includes(value)) {
+                          setForm({
+                            ...form,
+                            clients: form.clients.filter((c) => c !== value),
+                          });
+                        } else {
+                          setForm({ ...form, clients: [...form.clients, value] });
+                        }
+                      }}
+                      className="rounded text-blue-600"
+                    />
+                    <span className="text-gray-800">{client.Client}</span>
+                  </label>
+                ))}
+              </div>
               <input
                 type="date"
                 className="w-full border p-2 rounded"
