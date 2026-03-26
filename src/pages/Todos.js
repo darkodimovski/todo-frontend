@@ -15,6 +15,10 @@ export default function Todos() {
   const [editingTodoDocId, setEditingTodoDocId] = useState(null);
   const [error, setError] = useState(null);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+  const [showDone, setShowDone] = useState(false);
+
   const [filters, setFilters] = useState({
     position: "All",
     project: "All",
@@ -35,7 +39,6 @@ export default function Todos() {
     historyNote: "",
   });
 
-  // Stable, lint-safe data loader
   const fetchData = useCallback(async () => {
     try {
       const [todosRes, projectsRes] = await Promise.all([getTodos(), getProjects()]);
@@ -54,7 +57,7 @@ export default function Todos() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUsers(res.data || []);
-    } catch (err) {
+    } catch {
       setError("Failed to load users");
     }
   }, [token]);
@@ -63,8 +66,27 @@ export default function Todos() {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, showDone]);
+
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
+
+  const resetFormAndOpenModal = () => {
+    setEditingTodoDocId(null);
+    setForm({
+      title: "",
+      description: "",
+      descriptionHistory: "",
+      dueDate: "",
+      position: "todo",
+      project: "",
+      assignee: "",
+      historyNote: "",
+    });
+    setModalOpen(true);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -111,7 +133,7 @@ export default function Todos() {
       });
       setEditingTodoDocId(null);
       setModalOpen(false);
-    } catch (err) {
+    } catch {
       setError("Failed to save ToDo.");
     }
   };
@@ -169,6 +191,7 @@ export default function Todos() {
 
   const filteredTodos = todos
     .filter((todo) => {
+      const matchDone = showDone || todo.position !== "done";
       const matchPosition = filters.position === "All" || todo.position === filters.position;
       const matchProject =
         filters.project === "All" ||
@@ -176,8 +199,10 @@ export default function Todos() {
         todo.project?.id?.toString() === filters.project;
       const matchAssignee =
         filters.assignee === "All" || todo.assignee?.id?.toString() === filters.assignee;
-      const matchDateFrom = !filters.dateFrom || new Date(todo.dueDate) >= new Date(filters.dateFrom);
-      const matchDateTo = !filters.dateTo || new Date(todo.dueDate) <= new Date(filters.dateTo);
+      const matchDateFrom =
+        !filters.dateFrom || new Date(todo.dueDate) >= new Date(filters.dateFrom);
+      const matchDateTo =
+        !filters.dateTo || new Date(todo.dueDate) <= new Date(filters.dateTo);
       const search = filters.searchText.toLowerCase();
       const matchSearch =
         !search ||
@@ -185,13 +210,28 @@ export default function Todos() {
         todo.description?.toLowerCase().includes(search) ||
         todo.descriptionHistory?.toLowerCase().includes(search);
 
-      return matchPosition && matchProject && matchAssignee && matchDateFrom && matchDateTo && matchSearch;
+      return (
+        matchDone &&
+        matchPosition &&
+        matchProject &&
+        matchAssignee &&
+        matchDateFrom &&
+        matchDateTo &&
+        matchSearch
+      );
     })
     .sort((a, b) => {
       if (a.position === "done" && b.position !== "done") return 1;
       if (a.position !== "done" && b.position === "done") return -1;
       return 0;
     });
+
+  const totalPages = Math.max(1, Math.ceil(filteredTodos.length / ITEMS_PER_PAGE));
+
+  const paginatedTodos = filteredTodos.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   return (
     <div className="p-6">
@@ -201,111 +241,209 @@ export default function Todos() {
 
       <div className="mb-4 flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Todos</h2>
-        <button
-          onClick={() => {
-            setEditingTodoDocId(null);
-            setForm({
-              title: "",
-              description: "",
-              descriptionHistory: "",
-              dueDate: "",
-              position: "todo",
-              project: "",
-              assignee: "",
-              historyNote: "",
-            });
-            setModalOpen(true);
-          }}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          + Add ToDo
-        </button>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowDone((prev) => !prev)}
+            className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300"
+          >
+            {showDone ? "Hide Done" : "Show Done"}
+          </button>
+
+          <button
+            onClick={resetFormAndOpenModal}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            + Add ToDo
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <select name="position" value={filters.position} onChange={handleFilterChange} className="p-2 border rounded">
-          <option value="All">All Statuses</option>
-          <option value="todo">Todo</option>
-          <option value="in-progress">In Progress</option>
-          <option value="done">Done</option>
-        </select>
+      <div className="sticky top-0 bg-white z-10 pb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <select
+            name="position"
+            value={filters.position}
+            onChange={handleFilterChange}
+            className="p-2 border rounded"
+          >
+            <option value="All">All Statuses</option>
+            <option value="todo">Todo</option>
+            <option value="in-progress">In Progress</option>
+            <option value="done">Done</option>
+          </select>
 
-        <select name="project" value={filters.project} onChange={handleFilterChange} className="p-2 border rounded">
-          <option value="All">All Projects</option>
-          {projects.map((proj) => (
-            <option key={proj.documentId || proj.id} value={proj.documentId || proj.id}>
-              {proj.name}
-            </option>
-          ))}
-        </select>
+          <select
+            name="project"
+            value={filters.project}
+            onChange={handleFilterChange}
+            className="p-2 border rounded"
+          >
+            <option value="All">All Projects</option>
+            {projects.map((proj) => (
+              <option key={proj.documentId || proj.id} value={proj.documentId || proj.id}>
+                {proj.name}
+              </option>
+            ))}
+          </select>
 
-        <select name="assignee" value={filters.assignee} onChange={handleFilterChange} className="p-2 border rounded">
-          <option value="All">All Assignees</option>
-          {users.map((user) => (
-            <option key={user.id} value={user.id}>
-              {user.username}
-            </option>
-          ))}
-        </select>
+          <select
+            name="assignee"
+            value={filters.assignee}
+            onChange={handleFilterChange}
+            className="p-2 border rounded"
+          >
+            <option value="All">All Assignees</option>
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.username}
+              </option>
+            ))}
+          </select>
 
-        <input
-          type="text"
-          name="searchText"
-          value={filters.searchText}
-          onChange={handleFilterChange}
-          placeholder="Search title/description"
-          className="p-2 border rounded"
-        />
+          <input
+            type="text"
+            name="searchText"
+            value={filters.searchText}
+            onChange={handleFilterChange}
+            placeholder="Search title/description"
+            className="p-2 border rounded"
+          />
 
-        <input type="date" name="dateFrom" value={filters.dateFrom} onChange={handleFilterChange} className="p-2 border rounded" />
-        <input type="date" name="dateTo" value={filters.dateTo} onChange={handleFilterChange} className="p-2 border rounded" />
+          <input
+            type="date"
+            name="dateFrom"
+            value={filters.dateFrom}
+            onChange={handleFilterChange}
+            className="p-2 border rounded"
+          />
+          <input
+            type="date"
+            name="dateTo"
+            value={filters.dateTo}
+            onChange={handleFilterChange}
+            className="p-2 border rounded"
+          />
+        </div>
       </div>
 
-      <ul className="space-y-2">
-        {filteredTodos.map((todo) => (
-          <li key={todo.id} className={`group border p-3 rounded ${getTodoColor(todo.position)} transition hover:shadow-md`}>
-            <div className="flex justify-between items-start">
-              <div>
-                <div className="font-bold">{todo.title}</div>
-                <div className="text-sm text-gray-600 whitespace-pre-line">{todo.description}</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Project: {todo.project?.name || "N/A"} | Assignee: {todo.assignee?.username || "N/A"}
-                </div>
-                <div className="mt-1">
-                  <span className={getStatusBadge(todo.position)}>{todo.position}</span>
-                  <span className="text-xs text-gray-400 ml-2">Due: {todo.dueDate || "N/A"}</span>
-                </div>
-                {todo.descriptionHistory && (
-                  <div className="mt-2 bg-gray-100 p-2 rounded text-xs whitespace-pre-line">
-                    <strong>Description History:</strong>
-                    <br />
-                    {todo.descriptionHistory}
+      {["todo", "in-progress", "done"].map((status) => {
+        const sectionTodos = paginatedTodos.filter((t) => t.position === status);
+
+        if (!sectionTodos.length) return null;
+
+        return (
+          <div key={status} className="mb-6">
+            <h3 className="text-lg font-bold capitalize mb-2">{status}</h3>
+
+            <ul className="space-y-2">
+              {sectionTodos.map((todo) => (
+                <li
+                  key={todo.id}
+                  className={`group border p-3 rounded ${getTodoColor(
+                    todo.position
+                  )} transition hover:shadow-md`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-bold">{todo.title}</div>
+                      <div className="text-sm text-gray-600 whitespace-pre-line">
+                        {todo.description}
+                      </div>
+                      <div className="font-bold text-xs text-gray-500 mt-1">
+                        Project: {todo.project?.name || "N/A"} | Assignee:{" "}
+                        {todo.assignee?.username || "N/A"}
+                      </div>
+                      <div className="mt-1">
+                        <span className={getStatusBadge(todo.position)}>{todo.position}</span>
+                        <span className="text-xs text-gray-400 ml-2">
+                          Due: {todo.dueDate || "N/A"}
+                        </span>
+                      </div>
+                      {todo.descriptionHistory && (
+                        <div className="mt-2 bg-gray-100 p-2 rounded text-xs whitespace-pre-line">
+                          <strong>Description History:</strong>
+                          <br />
+                          {todo.descriptionHistory}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        onClick={() => handleEdit(todo)}
+                        className="text-blue-600 text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(todo.documentId)}
+                        className="text-red-600 text-sm"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                <button onClick={() => handleEdit(todo)} className="text-blue-600 text-sm">
-                  Edit
-                </button>
-                <button onClick={() => handleDelete(todo.documentId)} className="text-red-600 text-sm">
-                  Delete
-                </button>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+
+      {filteredTodos.length > 0 && (
+        <div className="flex justify-center mt-6 gap-2 items-center">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => p - 1)}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Prev
+          </button>
+
+          <span className="px-3 py-1">
+            Page {currentPage} / {totalPages}
+          </span>
+
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => p + 1)}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-center items-center p-4 sm:p-6 overflow-y-auto">
           <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
-            <button onClick={() => setModalOpen(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl">
+            <button
+              onClick={() => setModalOpen(false)}
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl"
+            >
               &times;
             </button>
-            <h2 className="text-xl font-semibold mb-4">{editingTodoDocId ? "Edit ToDo" : "Add ToDo"}</h2>
+            <h2 className="text-xl font-semibold mb-4">
+              {editingTodoDocId ? "Edit ToDo" : "Add ToDo"}
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input name="title" value={form.title} onChange={handleChange} required placeholder="Title" className="w-full p-2 border rounded" />
-              <textarea name="description" value={form.description} onChange={handleChange} rows={3} required placeholder="Main description" className="w-full p-2 border rounded" />
+              <input
+                name="title"
+                value={form.title}
+                onChange={handleChange}
+                required
+                placeholder="Title"
+                className="w-full p-2 border rounded"
+              />
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                rows={3}
+                required
+                placeholder="Main description"
+                className="w-full p-2 border rounded"
+              />
               <div>
                 <div className="flex gap-2 mb-2">
                   <input
@@ -313,7 +451,9 @@ export default function Todos() {
                     placeholder="Add to description history..."
                     className="w-full p-2 border rounded"
                     value={form.historyNote}
-                    onChange={(e) => setForm((prev) => ({ ...prev, historyNote: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, historyNote: e.target.value }))
+                    }
                   />
                   <button
                     type="button"
@@ -323,7 +463,9 @@ export default function Todos() {
                       const newEntry = `[${timestamp}] ${form.historyNote.trim()}`;
                       setForm((prev) => ({
                         ...prev,
-                        descriptionHistory: prev.descriptionHistory ? `${prev.descriptionHistory}\n${newEntry}` : newEntry,
+                        descriptionHistory: prev.descriptionHistory
+                          ? `${prev.descriptionHistory}\n${newEntry}`
+                          : newEntry,
                         historyNote: "",
                       }));
                     }}
@@ -342,7 +484,10 @@ export default function Todos() {
                           type="button"
                           className="text-red-500 text-xs ml-2"
                           onClick={() => {
-                            const updated = form.descriptionHistory.split("\n").filter((_, idx) => idx !== i).join("\n");
+                            const updated = form.descriptionHistory
+                              .split("\n")
+                              .filter((_, idx) => idx !== i)
+                              .join("\n");
                             setForm((prev) => ({ ...prev, descriptionHistory: updated }));
                           }}
                         >
@@ -353,13 +498,30 @@ export default function Todos() {
                   </div>
                 )}
               </div>
-              <input type="date" name="dueDate" value={form.dueDate} onChange={handleChange} required className="w-full p-2 border rounded" />
-              <select name="position" value={form.position} onChange={handleChange} className="w-full p-2 border rounded">
+              <input
+                type="date"
+                name="dueDate"
+                value={form.dueDate}
+                onChange={handleChange}
+                required
+                className="w-full p-2 border rounded"
+              />
+              <select
+                name="position"
+                value={form.position}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+              >
                 <option value="todo">Todo</option>
                 <option value="in-progress">In Progress</option>
                 <option value="done">Done</option>
               </select>
-              <select name="project" value={form.project} onChange={handleChange} className="w-full p-2 border rounded">
+              <select
+                name="project"
+                value={form.project}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+              >
                 <option value="">Select Project</option>
                 {projects.map((proj) => (
                   <option key={proj.id} value={proj.id}>
@@ -367,7 +529,12 @@ export default function Todos() {
                   </option>
                 ))}
               </select>
-              <select name="assignee" value={form.assignee} onChange={handleChange} className="w-full p-2 border rounded">
+              <select
+                name="assignee"
+                value={form.assignee}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+              >
                 <option value="">Assign to User</option>
                 {users.map((user) => (
                   <option key={user.id} value={user.id}>
@@ -375,7 +542,10 @@ export default function Todos() {
                   </option>
                 ))}
               </select>
-              <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded w-full">
+              <button
+                type="submit"
+                className="bg-green-500 text-white px-4 py-2 rounded w-full"
+              >
                 {editingTodoDocId ? "Update" : "Add"} ToDo
               </button>
             </form>
