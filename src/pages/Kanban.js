@@ -104,8 +104,8 @@ export default function Kanban() {
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">🗂️ Kanban Board</h2>
+    <div className="py-2 sm:p-6">
+      <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">🗂️ Kanban Board</h2>
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {columns.map((col) => (
@@ -114,7 +114,7 @@ export default function Kanban() {
                 <div
                   ref={provided.innerRef}
                   {...provided.droppableProps}
-                  className={`bg-gray-100 rounded p-4 min-h-[300px] ${getTopBorderClass(col.key)}`}
+                  className={`bg-gray-100 rounded p-3 sm:p-4 min-h-[120px] md:min-h-[300px] ${getTopBorderClass(col.key)}`}
                 >
                   <h3 className="text-xl font-semibold mb-4">{col.label}</h3>
                   <div className="space-y-4">

@@ -27,6 +27,7 @@ import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import { getProjects, getClients, getTodos } from "../services/api";
+import { useTheme as useMuiTheme } from "@mui/material/styles";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -90,14 +91,23 @@ const Timeline = () => {
   const pixelsPerDay = (maxTimelineWidth / totalDays) * zoom;
   const todayOffset = Math.max(0, differenceInDays(today, minDate));
 
+  const isDark = useMuiTheme().palette.mode === "dark";
+
   const getBarColor = (position = "") => {
-    const map = {
-      done: "#22c55e",
-      "in-progress": "#3b82f6",
-      todo: "#ef4444",
-      "no-todos": "#9ca3af"
-    };
-    return map[position.toLowerCase()] || "#d1d5db";
+    const map = isDark
+      ? {
+          done: "#2f7d57",
+          "in-progress": "#5f7489",
+          todo: "#b9472f",
+          "no-todos": "#4a4a4a"
+        }
+      : {
+          done: "#22c55e",
+          "in-progress": "#3b82f6",
+          todo: "#ef4444",
+          "no-todos": "#9ca3af"
+        };
+    return map[position.toLowerCase()] || (isDark ? "#3a3a3a" : "#d1d5db");
   };
 
   const getDuration = (start, end) => Math.max(1, differenceInDays(new Date(end), new Date(start)));
@@ -133,7 +143,7 @@ const Timeline = () => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box p={3}>
+      <Box px={{ xs: 0, sm: 3 }} py={{ xs: 1, sm: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexWrap="wrap" gap={2}>
           <Typography variant="h6">📊 Project Timeline</Typography>
           <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
@@ -184,7 +194,8 @@ const Timeline = () => {
                 <Box
                   key={index}
                   textAlign="center"
-                  borderRight="1px solid #e5e7eb"
+                  borderRight={1}
+                  borderColor="divider"
                   minWidth={pixelsPerDay}
                 >
                   {format(date, "MMM d")}
@@ -225,7 +236,7 @@ const Timeline = () => {
                           <Typography fontSize={12} fontWeight={500}>{name}</Typography>
                           <Chip label={position} size="small" sx={{ textTransform: 'capitalize', backgroundColor: getBarColor(position), color: "#fff" }} />
                         </Box>
-                        <Box position="relative" height={24} bgcolor="#f1f5f9" borderRadius={1}>
+                        <Box position="relative" height={24} bgcolor="action.hover" borderRadius={1}>
                           <Tooltip
                             title={
                               todos?.length
@@ -287,8 +298,11 @@ const Timeline = () => {
               top: "50%",
               left: "50%",
               transform: "translate(-50%, -50%)",
-              minWidth: 400,
-              p: 4,
+              width: { xs: "calc(100% - 32px)", sm: "auto" },
+              minWidth: { sm: 400 },
+              maxHeight: "90vh",
+              overflowY: "auto",
+              p: { xs: 2, sm: 4 },
               borderRadius: 2,
               boxShadow: 24
             }}

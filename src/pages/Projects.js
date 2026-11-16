@@ -28,16 +28,6 @@ export default function Projects() {
     fetchAllData();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value, multiple, options } = e.target;
-    if (multiple) {
-      const values = Array.from(options).filter((o) => o.selected).map((o) => o.value);
-      setForm({ ...form, [name]: values });
-    } else {
-      setForm({ ...form, [name]: value });
-    }
-  };
-
   const fetchAllData = async () => {
     const [projectRes, clientRes, todoRes] = await Promise.all([
       getProjects(),
@@ -197,7 +187,7 @@ export default function Projects() {
   };
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="py-2 sm:p-6">
       <div className="mb-4 flex flex-wrap gap-4 items-center">
         <select
           value={statusFilter}
@@ -322,11 +312,11 @@ export default function Projects() {
       </ul>
 
       {modalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-center items-center p-4 sm:p-6 overflow-y-auto">
-          <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
+        <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-center items-start sm:items-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-4 sm:p-6 relative my-4 sm:my-0">
             <button
               onClick={() => setModalOpen(false)}
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl"
+              className="absolute top-2 right-2 w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-700 text-2xl"
             >
               &times;
             </button>

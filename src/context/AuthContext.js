@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useEffect, useState } from "react";
 
 export const AuthContext = createContext();
 
@@ -22,11 +22,12 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => updateStorage("user", user), [user]);
   useEffect(() => updateStorage("role", role), [role]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
+    localStorage.removeItem("token");
     setToken(null);
     setUser(null);
     setRole(null);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ token, setToken, user, setUser, role, setRole, logout }}>

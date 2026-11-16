@@ -1,3 +1,185 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ------------------------------------------------------------------
+   Dark theme – "industrial"
+   Neutral graphite surfaces, a safety-orange accent and muted status
+   colours (rust / steel / signal green).
+   The app's pages use light Tailwind utilities (bg-white, text-gray-700…).
+   Instead of adding dark: variants to every element, the light utilities
+   are remapped here when <html class="dark"> is set (see ThemeContext).
+   New code can also use Tailwind's dark: variants directly.
+------------------------------------------------------------------- */
+
+:root {
+  --surface-page: #f9fafb;
+}
+
+.dark {
+  /* graphite, no blue cast */
+  --surface-page: #141414;
+  --surface: #1c1c1c;
+  --surface-2: #242424;
+  --surface-3: #2e2e2e;
+  --surface-4: #3a3a3a;
+  --line: #2f2f2f;
+  --line-strong: #444444;
+  --text-1: #ececec;
+  --text-2: #b8b8b8;
+  --text-3: #8a8a8a;
+
+  /* safety orange accent */
+  --accent: #f08c2e;
+  --accent-strong: #c2410c;
+  --accent-strong-hover: #a3360a;
+
+  /* status: todo = rust, in progress = steel, done = signal green */
+  --todo: 214 92 66;
+  --progress: 140 160 180;
+  --done: 72 178 128;
+  --warn: 232 176 64;
+
+  color-scheme: dark;
+}
+
+@layer base {
+  body {
+    background-color: var(--surface-page);
+  }
+
+  .dark body {
+    color: var(--text-1);
+  }
+
+  .dark *,
+  .dark ::before,
+  .dark ::after {
+    border-color: var(--line);
+  }
+
+  .dark input,
+  .dark select,
+  .dark textarea {
+    background-color: var(--surface-2);
+    color: var(--text-1);
+  }
+
+  .dark input:focus,
+  .dark select:focus,
+  .dark textarea:focus {
+    outline: 1px solid var(--accent);
+    outline-offset: 0;
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: var(--text-3);
+  }
+
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+  }
+}
+
+/* neutral surfaces */
+.dark .bg-white { background-color: var(--surface); }
+.dark .bg-gray-50 { background-color: var(--surface-page); }
+.dark .bg-gray-100 { background-color: var(--surface-2); }
+.dark .bg-gray-200 { background-color: var(--surface-3); }
+.dark .bg-gray-300 { background-color: var(--surface-4); }
+.dark .bg-gray-800 { background-color: var(--surface-3); }
+.dark .hover\:bg-gray-50:hover { background-color: var(--surface-2); }
+.dark .hover\:bg-gray-100:hover { background-color: var(--surface-3); }
+.dark .hover\:bg-gray-200:hover { background-color: var(--surface-4); }
+.dark .hover\:bg-gray-300:hover { background-color: var(--surface-4); }
+.dark .hover\:bg-gray-400:hover { background-color: #4a4a4a; }
+.dark .hover\:bg-gray-900:hover { background-color: var(--surface-4); }
+
+/* modal inputs/fields sit on bg-white cards: keep them a step lighter */
+.dark .bg-white input,
+.dark .bg-white select,
+.dark .bg-white textarea { background-color: var(--surface-2); }
+
+/* neutral text */
+.dark .text-gray-800,
+.dark .text-gray-900 { color: var(--text-1); }
+.dark .text-gray-700,
+.dark .text-gray-600 { color: var(--text-2); }
+.dark .text-gray-500,
+.dark .text-gray-400 { color: var(--text-3); }
+.dark .hover\:text-gray-700:hover { color: var(--text-1); }
+
+/* borders */
+.dark .border-gray-200,
+.dark .border-gray-300 { border-color: var(--line-strong); }
+.dark .border-blue-500 { border-color: var(--accent); }
+
+/* accent: blue actions become safety orange */
+.dark .bg-blue-600 { background-color: var(--accent-strong); }
+.dark .hover\:bg-blue-700:hover { background-color: var(--accent-strong-hover); }
+.dark .text-blue-600 { color: var(--accent); }
+.dark .text-blue-800 { color: rgb(var(--progress)); }
+.dark .bg-green-500,
+.dark .bg-green-600 { background-color: #2f7d57; }
+.dark .hover\:bg-green-700:hover { background-color: #276848; }
+.dark .bg-red-500 { background-color: #b9472f; }
+
+/* status tints: low-alpha so they read as a hint on graphite */
+.dark .bg-red-50 { background-color: rgb(var(--todo) / 0.06); }
+.dark .bg-red-100 { background-color: rgb(var(--todo) / 0.12); }
+.dark .bg-red-200 { background-color: rgb(var(--todo) / 0.22); }
+.dark .bg-blue-50 { background-color: rgb(var(--progress) / 0.06); }
+.dark .bg-blue-100 { background-color: rgb(var(--progress) / 0.12); }
+.dark .bg-blue-200 { background-color: rgb(var(--progress) / 0.22); }
+.dark .bg-green-50 { background-color: rgb(var(--done) / 0.06); }
+.dark .bg-green-100 { background-color: rgb(var(--done) / 0.12); }
+.dark .bg-green-200 { background-color: rgb(var(--done) / 0.22); }
+.dark .bg-yellow-100 { background-color: rgb(var(--warn) / 0.12); }
+.dark .hover\:bg-red-200:hover { background-color: rgb(var(--todo) / 0.2); }
+.dark .hover\:bg-blue-200:hover { background-color: rgb(var(--progress) / 0.2); }
+.dark .hover\:bg-green-200:hover { background-color: rgb(var(--done) / 0.2); }
+
+.dark .text-red-700,
+.dark .text-red-800,
+.dark .text-red-600,
+.dark .text-red-500 { color: rgb(var(--todo)); }
+.dark .text-green-800 { color: rgb(var(--done)); }
+.dark .text-yellow-800,
+.dark .text-yellow-600 { color: rgb(var(--warn)); }
+.dark .text-purple-600 { color: #b9a7d6; }
+
+.dark .border-red-300,
+.dark .border-red-400 { border-color: rgb(var(--todo) / 0.55); }
+.dark .border-blue-300,
+.dark .border-blue-400 { border-color: rgb(var(--progress) / 0.55); }
+.dark .border-green-300,
+.dark .border-green-400 { border-color: rgb(var(--done) / 0.55); }
+
+/* flat, hard-edged look: thin outline instead of soft shadows */
+.dark .shadow,
+.dark .shadow-sm,
+.dark .shadow-md,
+.dark .shadow-lg { box-shadow: 0 0 0 1px var(--line), 0 2px 6px rgb(0 0 0 / 0.4); }
+
+/* theme toggle */
+.dark .theme-toggle { color: var(--accent); }
+
+/* Recharts (Dashboard) */
+.dark .recharts-cartesian-axis-tick-value,
+.dark .recharts-pie-label-text { fill: var(--text-2); }
+.dark .recharts-cartesian-axis-line,
+.dark .recharts-cartesian-axis-tick-line { stroke: var(--line-strong); }
+.dark .recharts-default-tooltip {
+  background-color: var(--surface) !important;
+  border-color: var(--line-strong) !important;
+  color: var(--text-1);
+}
+.dark .recharts-tooltip-cursor { fill: rgb(255 255 255 / 0.05); }
+
+/* Recharts series colours (set as fill attributes in Dashboard.js) */
+.dark .recharts-surface [fill="#f87171"] { fill: rgb(214 92 66); }
+.dark .recharts-surface [fill="#60a5fa"] { fill: rgb(140 160 180); }
+.dark .recharts-surface [fill="#4ade80"] { fill: rgb(72 178 128); }
+.dark .recharts-pie-sector path { stroke: var(--surface); }
+.dark .recharts-pie-label-line { stroke: var(--line-strong); }

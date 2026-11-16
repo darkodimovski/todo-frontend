@@ -73,11 +73,11 @@ export default function Dashboard() {
   const COLORS = ["#f87171", "#60a5fa", "#4ade80"];
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">🚀 Welcome, Darko</h1>
+    <div className="py-2 sm:p-6">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">🚀 Welcome, Darko</h1>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
         <StatCard label="📁 Projects - Todo" value={projectStats.todo} color="bg-red-100 text-red-800" />
         <StatCard label="📈 Projects - In Progress" value={projectStats.inProgress} color="bg-blue-100 text-blue-800" />
         <StatCard label="✅ Projects - Done" value={projectStats.done} color="bg-green-100 text-green-800" />
@@ -89,7 +89,7 @@ export default function Dashboard() {
       </div>
 
       {/* Charts & Exports */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div className="bg-white p-4 rounded shadow">
           <h3 className="font-semibold text-lg mb-2">ToDos Breakdown</h3>
           <ResponsiveContainer width="100%" height={200}>
@@ -115,7 +115,7 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white p-4 rounded shadow col-span-2">
+        <div className="bg-white p-4 rounded shadow lg:col-span-2 min-w-0">
           <h3 className="font-semibold text-lg mb-2">Top Contributors</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={contributorStats}>
@@ -140,7 +140,7 @@ export default function Dashboard() {
             assignee: t.assignee?.username || "",
           }))}
           filename="todos_export.csv"
-          className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900"
+          className="inline-block bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900"
         >
           ⬇️ Export Todos as CSV
         </CSVLink>
@@ -186,9 +186,9 @@ function StatCard({ label, value, color }) {
   }, [value]);
 
   return (
-    <div className={`p-5 rounded-lg shadow-md ${color} text-center`}>
-      <div className="text-3xl font-bold">{count}</div>
-      <div className="text-sm mt-1 font-medium">{label}</div>
+    <div className={`p-3 sm:p-5 rounded-lg shadow-md ${color} text-center`}>
+      <div className="text-2xl sm:text-3xl font-bold">{count}</div>
+      <div className="text-xs sm:text-sm mt-1 font-medium">{label}</div>
     </div>
   );
 }
