@@ -5,6 +5,8 @@ import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { BrowserRouter as Router } from "react-router-dom";
 import './index.css';
+import "./services/http"; // attaches the JWT to every API request
+import { registerServiceWorker } from "./services/push";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -17,3 +19,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </ThemeProvider>
   </React.StrictMode>
 );
+
+registerServiceWorker();

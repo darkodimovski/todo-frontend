@@ -1,8 +1,4 @@
-import axios from "axios";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:1337";
-
-const API = axios.create({ baseURL: `${API_URL}/api` });
+import { api as API } from "./http";
 
 export const getProjects = () =>
   API.get("/projects?pagination[pageSize]=1000&populate=*");

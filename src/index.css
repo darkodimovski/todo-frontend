@@ -183,3 +183,42 @@
 .dark .recharts-surface [fill="#4ade80"] { fill: rgb(72 178 128); }
 .dark .recharts-pie-sector path { stroke: var(--surface); }
 .dark .recharts-pie-label-line { stroke: var(--line-strong); }
+
+/* ------------------------------------------------------------------
+   Calendar (FullCalendar)
+------------------------------------------------------------------- */
+.calendar-wrap .fc { font-size: 0.85rem; }
+.calendar-wrap .fc .fc-toolbar-title { font-size: 1.1rem; font-weight: 600; }
+.calendar-wrap .fc .fc-button { padding: 0.3rem 0.6rem; font-size: 0.8rem; text-transform: none; }
+.calendar-wrap .fc .fc-daygrid-day-number { font-size: 0.75rem; }
+@media (max-width: 639px) {
+  .calendar-wrap .fc .fc-toolbar { flex-wrap: wrap; gap: 0.5rem; }
+  .calendar-wrap .fc .fc-toolbar-title { font-size: 0.95rem; }
+}
+.cal-event { border: 0 !important; padding: 1px 4px; cursor: pointer; }
+.cal-event .fc-event-title { white-space: normal; font-weight: 500; }
+.cal-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.cal-todo { background: #dc2626 !important; }
+.cal-progress { background: #2563eb !important; }
+.cal-done { background: #16a34a !important; opacity: 0.75; }
+.cal-overdue, .cal-overdue-dot { outline: 2px solid #f59e0b; outline-offset: -2px; }
+.cal-event, .cal-event .fc-event-title, .cal-event .fc-event-time { color: #fff !important; }
+
+.dark .calendar-wrap .fc {
+  --fc-border-color: var(--line);
+  --fc-page-bg-color: var(--surface);
+  --fc-neutral-bg-color: var(--surface-2);
+  --fc-today-bg-color: rgb(240 140 46 / 0.08);
+  --fc-button-bg-color: var(--surface-3);
+  --fc-button-border-color: var(--line-strong);
+  --fc-button-hover-bg-color: var(--surface-4);
+  --fc-button-hover-border-color: var(--line-strong);
+  --fc-button-active-bg-color: var(--accent-strong);
+  --fc-button-active-border-color: var(--accent-strong);
+  --fc-button-text-color: var(--text-1);
+  color: var(--text-1);
+}
+.dark .calendar-wrap .fc a { color: var(--text-2); }
+.dark .cal-todo { background: #b9472f !important; }
+.dark .cal-progress { background: #5f7489 !important; }
+.dark .cal-done { background: #2f7d57 !important; }

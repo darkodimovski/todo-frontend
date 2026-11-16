@@ -2,6 +2,7 @@ import { useEffect, useState, useContext } from "react";
 import * as XLSX from "xlsx";
 import { getProjects, getClients, getTodos } from "../services/api";
 import { AuthContext } from "../context/AuthContext";
+import TemplatesModal, { saveProjectAsTemplate } from "../components/ProjectTemplates";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:1337";
 
@@ -16,6 +17,19 @@ export default function Projects() {
   const [expandedProject, setExpandedProject] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState(null);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  const handleSaveAsTemplate = async (proj) => {
+    const name = window.prompt("Template name", proj.name);
+    if (!name) return;
+    try {
+      await saveProjectAsTemplate(proj.documentId, name);
+      setNotice(`Saved "${name}" as a template.`);
+    } catch (err) {
+      setNotice(`Failed to save template${err?.response?.status ? ` (HTTP ${err.response.status})` : ""}.`);
+    }
+  };
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -231,9 +245,29 @@ export default function Projects() {
             >
               + Add Project
             </button>
+            <button
+              onClick={() => setTemplatesOpen(true)}
+              className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300"
+            >
+              From template
+            </button>
           </>
         )}
       </div>
+
+      {notice && (
+        <div className="mb-4 p-2 rounded bg-blue-50 text-sm flex justify-between gap-2">
+          <span>{notice}</span>
+          <button onClick={() => setNotice("")} className="text-gray-500">×</button>
+        </div>
+      )}
+
+      <TemplatesModal
+        open={templatesOpen}
+        onClose={() => setTemplatesOpen(false)}
+        clients={clients}
+        onCreated={fetchAllData}
+      />
 
       <ul className="space-y-2">
         {projects
@@ -289,12 +323,15 @@ export default function Projects() {
                     )}
 
                     {isSuperAdmin && (
-                      <div className="flex gap-2 mt-2">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
                         <button onClick={() => handleEdit(proj)} className="text-blue-600 text-sm underline">
                           Edit
                         </button>
                         <button onClick={() => handleClone(proj)} className="text-yellow-600 text-sm underline">
                           Clone
+                        </button>
+                        <button onClick={() => handleSaveAsTemplate(proj)} className="text-gray-600 text-sm underline">
+                          Save as template
                         </button>
                         <button
                           onClick={() => handleDelete(proj.documentId)}

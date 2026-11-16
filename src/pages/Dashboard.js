@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { CSVLink } from "react-csv";
+import { AuthContext } from "../context/AuthContext";
+import { getProjects, getTodos } from "../services/api";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:1337";
 
 
 export default function Dashboard() {
+  const { user } = useContext(AuthContext);
   const [projects, setProjects] = useState([]);
   const [todos, setTodos] = useState([]);
   const [users, setUsers] = useState([]);
@@ -14,8 +17,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     Promise.all([
-      axios.get(`${API_URL}/api/projects`),
-      axios.get(`${API_URL}/api/todos?populate=*`),
+      getProjects(),
+      getTodos(),
       axios.get(`${API_URL}/api/users`),
     ]).then(([projectRes, todoRes, userRes]) => {
       const fetchedProjects = projectRes.data.data || [];
@@ -74,7 +77,7 @@ export default function Dashboard() {
 
   return (
     <div className="py-2 sm:p-6">
-      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">🚀 Welcome, Darko</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">🚀 Welcome, {user?.username || "there"}</h1>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">

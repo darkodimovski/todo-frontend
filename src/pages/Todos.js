@@ -7,8 +7,26 @@ import { jsPDF } from "jspdf";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:1337";
 
+const SCOPES = [
+  { key: "mine", label: "Mine" },
+  { key: "all", label: "All" },
+  { key: "today", label: "Today" },
+  { key: "week", label: "This week" },
+  { key: "overdue", label: "Overdue" },
+];
+
+const isoToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zagreb" }).format(new Date());
+
+const readScope = () => {
+  try {
+    return localStorage.getItem("todoScope") || "mine";
+  } catch {
+    return "mine";
+  }
+};
+
 export default function Todos() {
-  const { token, logout } = useContext(AuthContext);
+  const { token, logout, user: currentUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [todos, setTodos] = useState([]);
@@ -22,6 +40,16 @@ export default function Todos() {
   const ITEMS_PER_PAGE = 10;
   const [showDone, setShowDone] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [scope, setScope] = useState(readScope);
+
+  const changeScope = (key) => {
+    setScope(key);
+    try {
+      localStorage.setItem("todoScope", key);
+    } catch {
+      // ignore
+    }
+  };
 
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [existingPhotos, setExistingPhotos] = useState([]);
@@ -91,7 +119,7 @@ export default function Todos() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters, showDone]);
+  }, [filters, showDone, scope]);
 
   const closePhotoViewer = useCallback(() => {
     setPhotoViewerOpen(false);
@@ -425,7 +453,37 @@ export default function Todos() {
     }
   };
 
+  const today = isoToday();
+  const weekEnd = (() => {
+    const d = new Date(`${today}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + (7 - (((d.getUTCDay() + 6) % 7) + 1)));
+    return d.toISOString().slice(0, 10);
+  })();
+
+  const matchScope = (todo, key) => {
+    const open = todo.position !== "done";
+    switch (key) {
+      case "mine":
+        return todo.assignee?.id === currentUser?.id;
+      case "today":
+        return open && todo.dueDate === today;
+      case "week":
+        return open && !!todo.dueDate && todo.dueDate >= today && todo.dueDate <= weekEnd;
+      case "overdue":
+        return open && !!todo.dueDate && todo.dueDate < today;
+      default:
+        return true;
+    }
+  };
+  const inScope = (todo) => matchScope(todo, scope);
+
+  // badge counts: open ToDos only
+  const scopeCounts = Object.fromEntries(
+    SCOPES.map(({ key }) => [key, todos.filter((t) => t.position !== "done" && matchScope(t, key)).length])
+  );
+
   const filteredTodos = todos
+    .filter(inScope)
     .filter((todo) => {
       const matchDone = showDone || todo.position !== "done";
       const matchPosition = filters.position === "All" || todo.position === filters.position;
@@ -510,6 +568,24 @@ export default function Todos() {
             + Add ToDo
           </button>
         </div>
+      </div>
+
+      <div className="flex gap-1 overflow-x-auto pb-2 mb-2 -mx-1 px-1">
+        {SCOPES.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => changeScope(key)}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-sm border transition ${
+              scope === key ? "bg-blue-600 text-white border-transparent" : "bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            {label}
+            <span className={`ml-1.5 text-xs ${scope === key ? "opacity-80" : "text-gray-500"}`}>
+              {scopeCounts[key]}
+            </span>
+          </button>
+        ))}
       </div>
 
       <div className="sm:sticky top-0 bg-gray-50 z-10 sm:pt-2 pb-2 sm:pb-4">
