@@ -1,0 +1,26 @@
+# Netlify: build the React app; set REACT_APP_API_URL in
+# Site configuration → Environment variables (e.g. https://bo-todo-api.duckdns.org)
+[build]
+  command = "npm run build"
+  publish = "build"
+
+[build.environment]
+  NODE_VERSION = "20"
+  CI = "false"
+
+# single-page app: every route serves index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# always fetch the newest service worker and manifest
+[[headers]]
+  for = "/service-worker.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "no-cache"

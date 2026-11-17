@@ -905,9 +905,10 @@ export default function Todos() {
                 name="assignee"
                 value={form.assignee}
                 onChange={handleChange}
+                required
                 className="w-full p-2 border rounded"
               >
-                <option value="">Assign to User</option>
+                <option value="">Assign to User *</option>
                 {users.map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.username}

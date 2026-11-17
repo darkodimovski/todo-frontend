@@ -19,8 +19,16 @@ const emptyForm = {
 const todayIso = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zagreb" }).format(new Date());
 
 // same rule as the server: next due date on or after `from`
+const isDaily = (f) => f === "daily" || f === "workdays";
+
 function nextDue(rt, from = todayIso()) {
   const d = new Date(`${from}T00:00:00Z`);
+  if (rt.frequency === "daily") return from;
+  if (rt.frequency === "workdays") {
+    const dow = d.getUTCDay();
+    d.setUTCDate(d.getUTCDate() + (dow === 6 ? 2 : dow === 0 ? 1 : 0));
+    return d.toISOString().slice(0, 10);
+  }
   if (rt.frequency === "monthly") {
     for (let i = 0; i < 2; i++) {
       const y = d.getUTCFullYear();
@@ -35,10 +43,15 @@ function nextDue(rt, from = todayIso()) {
   return d.toISOString().slice(0, 10);
 }
 
-const scheduleText = (rt) =>
-  rt.frequency === "monthly"
-    ? `Monthly on day ${rt.monthDay}${rt.monthDay > 28 ? " (or last day)" : ""}`
-    : `Every ${WEEKDAYS[(rt.weekday || 1) - 1]}`;
+const scheduleText = (rt) => {
+  if (rt.frequency === "workdays") return "Every working day (Mon–Fri)";
+  if (rt.frequency === "daily") return "Every day";
+  if (rt.frequency === "monthly") return `Monthly on day ${rt.monthDay}${rt.monthDay > 28 ? " (or last day)" : ""}`;
+  return `Every ${WEEKDAYS[(rt.weekday || 1) - 1]}`;
+};
+
+const leadText = (rt) =>
+  isDaily(rt.frequency) ? "created in the morning" : `created ${rt.leadDays ?? 2} day(s) before`;
 
 const fmt = (iso) => (iso ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : "—");
 
@@ -143,10 +156,14 @@ export default function Recurring() {
   return (
     <div className="py-2 sm:p-6">
       <div className="mb-2 flex flex-wrap justify-between items-center gap-3">
-        <h2 className="text-xl sm:text-2xl font-semibold">Recurring ToDos</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold">Recurring Todos</h2>
         <div className="flex flex-wrap gap-2">
-          <button onClick={generateNow} className="bg-gray-200 text-gray-800 px-3 py-2 rounded hover:bg-gray-300 text-sm">
-            Create due ToDos now
+          <button
+            onClick={generateNow}
+            title="Creates every ToDo that is due now. Normally runs by itself at 06:00 and when the server starts."
+            className="bg-gray-200 text-gray-800 px-3 py-2 rounded hover:bg-gray-300 text-sm"
+          >
+            Run now
           </button>
           <button onClick={openNew} className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 text-sm">
             + Add recurring
@@ -154,8 +171,8 @@ export default function Recurring() {
         </div>
       </div>
       <p className="text-sm text-gray-600 mb-4">
-        Reports and invoices that come back every week or month. Each one creates a normal ToDo a few days before
-        it's due (every morning at 06:00), and the assignee gets an alert.
+        Reports and invoices that come back every day, week or month. Each one creates a normal ToDo (every morning
+        at 06:00 and when the server starts) and the assignee gets an alert. "Run now" does the same immediately.
       </p>
 
       {error && <div className="mb-4 p-2 rounded bg-red-100 text-red-700 text-sm">{error}</div>}
@@ -180,7 +197,7 @@ export default function Recurring() {
               <div className="flex-1 min-w-0">
                 <div className="font-semibold break-words">{rt.title}</div>
                 <div className="text-xs text-gray-500 mt-0.5">
-                  {scheduleText(rt)} · created {rt.leadDays ?? 2} day(s) before
+                  {scheduleText(rt)} · {leadText(rt)}
                   {rt.project?.name ? ` · ${rt.project.name}` : ""}
                 </div>
               </div>
@@ -234,11 +251,17 @@ export default function Recurring() {
                 <label className="text-sm">
                   <span className="block text-gray-600 mb-1">Repeats</span>
                   <select value={form.frequency} onChange={set("frequency")} className="w-full p-2 border rounded">
+                    <option value="workdays">Every working day (Mon–Fri)</option>
+                    <option value="daily">Every day</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
                   </select>
                 </label>
-                {form.frequency === "weekly" ? (
+                {isDaily(form.frequency) ? (
+                  <div className="text-xs text-gray-500 self-end pb-2">
+                    A new ToDo is created every morning, due the same day.
+                  </div>
+                ) : form.frequency === "weekly" ? (
                   <label className="text-sm">
                     <span className="block text-gray-600 mb-1">Due on</span>
                     <select value={form.weekday} onChange={set("weekday")} className="w-full p-2 border rounded">
@@ -262,6 +285,7 @@ export default function Recurring() {
                 )}
               </div>
 
+              {!isDaily(form.frequency) && (
               <label className="text-sm block">
                 <span className="block text-gray-600 mb-1">Create the ToDo this many days before it's due</span>
                 <input
@@ -273,9 +297,10 @@ export default function Recurring() {
                   className="w-full p-2 border rounded"
                 />
               </label>
+              )}
 
-              <select value={form.assignee} onChange={set("assignee")} className="w-full p-2 border rounded">
-                <option value="">Assign to…</option>
+              <select value={form.assignee} onChange={set("assignee")} required className="w-full p-2 border rounded">
+                <option value="">Assign to… *</option>
                 {users.map((u) => (
                   <option key={u.id} value={u.documentId}>{u.username}</option>
                 ))}
