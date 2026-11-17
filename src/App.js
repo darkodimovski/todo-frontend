@@ -9,6 +9,11 @@ import Calendar from "./pages/Calendar";
 import Recurring from "./pages/Recurring";
 import Report from "./pages/Report";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import Register from "./pages/Register";
+import Users from "./pages/Users";
+import Account from "./pages/Account";
 import PrivateRoute from "./components/PrivateRoute";
 import { AuthContext } from "./context/AuthContext";
 import { Menu, X } from "lucide-react";
@@ -26,6 +31,8 @@ const PAGES = [
   { path: "/kanban", label: "Kanban", access: "manager", element: <Kanban /> },
   { path: "/recurring", label: "Recurring", access: "manager", element: <Recurring /> },
   { path: "/report", label: "Report", access: "manager", element: <Report /> },
+  { path: "/users", label: "Users", access: "manager", element: <Users /> },
+  { path: "/account", label: "My account", access: "all", element: <Account />, hidden: true },
 ];
 
 export default function App() {
@@ -37,7 +44,7 @@ export default function App() {
 
   const canSee = (access) =>
     access === "all" || (access === "bo" && (superUser || backofficeSpecialist)) || (access === "manager" && superUser);
-  const visible = PAGES.filter((p) => canSee(p.access));
+  const visible = PAGES.filter((p) => canSee(p.access) && !p.hidden);
 
   const handleLogout = async () => {
     // stop alerts for this user on this device
@@ -71,9 +78,9 @@ export default function App() {
               >
                 {menuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
-              <span className="text-sm font-semibold text-gray-800 truncate px-2">
+              <NavLink to="/account" onClick={() => setMenuOpen(false)} className="text-sm font-semibold text-gray-800 truncate px-2">
                 {user?.username || user?.email || "User"}
-              </span>
+              </NavLink>
               <div className="flex items-center">
                 <NotificationToggle />
                 <ThemeToggle />
@@ -95,7 +102,9 @@ export default function App() {
                 <NotificationToggle />
                 <ThemeToggle />
               </div>
-              <span className="text-sm text-gray-700">👋 {user?.username || user?.email || "User"}</span>
+              <NavLink to="/account" className="text-sm text-gray-700 hover:underline" title="My account">
+                👋 {user?.username || user?.email || "User"}
+              </NavLink>
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-semibold">{role}</span>
               <button onClick={handleLogout} className="text-sm text-red-500 underline">
                 Logout
@@ -117,6 +126,9 @@ export default function App() {
                   {p.label}
                 </NavLink>
               ))}
+              <NavLink to="/account" onClick={() => setMenuOpen(false)} className={linkClass(true)}>
+                My account
+              </NavLink>
               <div className="flex items-center gap-3 mt-2 pt-3 border-t px-2">
                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-semibold">{role}</span>
                 <button onClick={handleLogout} className="text-sm text-red-500 underline ml-auto">
@@ -131,6 +143,9 @@ export default function App() {
       <main className="container mx-auto px-3 sm:px-4 pb-8">
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/register" element={<Register />} />
           {PAGES.map((p) => (
             <Route
               key={p.path}
