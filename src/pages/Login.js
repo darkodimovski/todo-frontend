@@ -24,11 +24,16 @@ export default function Login() {
       navigate("/");
     } catch (err) {
       const msg = err?.response?.data?.error?.message || "";
-      setError(
-        /blocked/i.test(msg)
-          ? "Your account isn't active – it's waiting for a manager's approval or has been deactivated."
-          : "Wrong e-mail/username or password."
-      );
+      if (!err?.response) {
+        // no answer at all: offline, or the network/firewall blocks the API address
+        setError("Can't reach the server. Check your internet connection – some company networks block the app.");
+      } else if (/blocked/i.test(msg)) {
+        setError("Your account isn't active – it's waiting for a manager's approval or has been deactivated.");
+      } else if (err.response.status === 429) {
+        setError("Too many attempts. Wait a few minutes and try again.");
+      } else {
+        setError("Wrong e-mail/username or password.");
+      }
     } finally {
       setLoading(false);
     }
