@@ -836,7 +836,12 @@ export default function Todos() {
                         historyNote: "",
                       }));
                     }}
-                    className="bg-gray-300 hover:bg-gray-400 px-3 py-1 rounded"
+                    title={form.historyNote.trim() ? "Add this note to the history" : "Type a note first"}
+                    className={`px-3 py-1 rounded transition ${
+                      form.historyNote.trim()
+                        ? "bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-300"
+                        : "bg-gray-300 hover:bg-gray-400"
+                    }`}
                   >
                     ➕
                   </button>
