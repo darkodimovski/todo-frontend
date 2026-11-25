@@ -53,7 +53,7 @@ export default function Projects() {
     const fetchedProjects = projectRes.data.data.map((project) => {
       const relatedTodos = fetchedTodos.filter((todo) => todo.project?.id === project.id);
       const allDone = relatedTodos.length > 0 && relatedTodos.every((todo) => todo.position === "done");
-      const anyInProgress = relatedTodos.some((todo) => todo.position === "in-progress");
+      const anyInProgress = relatedTodos.some((todo) => todo.position === "in-progress" || todo.position === "review");
       const anyTodo = relatedTodos.some((todo) => todo.position === "todo");
 
       let newPosition = "Todo";
@@ -303,7 +303,8 @@ export default function Projects() {
                     </p>
                     <p className="text-sm mt-1">
                       📝 Todos: {projectTodos.length} | ✅ Done: {statusCount["done"] || 0} | 🔄 In
-                      Progress: {statusCount["in-progress"] || 0} | 📌 Todo: {statusCount["todo"] || 0}
+                      Progress: {statusCount["in-progress"] || 0} | 🔍 Review: {statusCount["review"] || 0} | 📌 Todo:{" "}
+                      {statusCount["todo"] || 0}
                     </p>
                     <button
                       className="text-sm text-blue-600 underline mt-2"

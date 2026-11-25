@@ -47,6 +47,7 @@ const VIEWS = {
 const STATUS_LABEL = {
   todo: "Todo",
   "in-progress": "In progress",
+  review: "In review",
   done: "Done",
   "no-todos": "No ToDos",
 };
@@ -91,7 +92,7 @@ export default function Timeline() {
 
         let status = "no-todos";
         if (related.length && done === related.length) status = "done";
-        else if (related.some((t) => t.position === "in-progress")) status = "in-progress";
+        else if (related.some((t) => t.position === "in-progress" || t.position === "review")) status = "in-progress";
         else if (related.some((t) => t.position === "todo")) status = "todo";
 
         return {
@@ -165,8 +166,8 @@ export default function Timeline() {
   // ----- colours -----
   const statusColor = (status) => {
     const map = isDark
-      ? { done: "#2f7d57", "in-progress": "#5f7489", todo: "#b9472f", "no-todos": "#4a4a4a" }
-      : { done: "#16a34a", "in-progress": "#2563eb", todo: "#dc2626", "no-todos": "#9ca3af" };
+      ? { done: "#2f7d57", "in-progress": "#5f7489", review: "#a07a2a", todo: "#b9472f", "no-todos": "#4a4a4a" }
+      : { done: "#16a34a", "in-progress": "#2563eb", review: "#ca8a04", todo: "#dc2626", "no-todos": "#9ca3af" };
     return map[status] || map["no-todos"];
   };
   const gridLine = theme.palette.divider;

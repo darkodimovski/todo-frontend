@@ -9,6 +9,7 @@ export default function Kanban() {
   const [todos, setTodos] = useState({
     todo: [],
     "in-progress": [],
+    review: [],
     done: [],
   });
 
@@ -34,7 +35,7 @@ export default function Kanban() {
           else console.warn("Unknown position:", pos, cleanTodo);
           return acc;
         },
-        { todo: [], "in-progress": [], done: [] }
+        { todo: [], "in-progress": [], review: [], done: [] }
       );
 
       setTodos(grouped);
@@ -50,6 +51,7 @@ export default function Kanban() {
   const columns = [
     { key: "todo", label: "To Do" },
     { key: "in-progress", label: "In Progress" },
+    { key: "review", label: "In Review" },
     { key: "done", label: "Done" },
   ];
 
@@ -87,6 +89,8 @@ export default function Kanban() {
         return "bg-green-100 border-green-300";
       case "in-progress":
         return "bg-blue-100 border-blue-300";
+      case "review":
+        return "bg-yellow-100 border-yellow-300";
       default:
         return "bg-red-100 border-red-300";
     }
@@ -98,6 +102,8 @@ export default function Kanban() {
         return "border-t-4 border-green-400";
       case "in-progress":
         return "border-t-4 border-blue-400";
+      case "review":
+        return "border-t-4 border-yellow-400";
       default:
         return "border-t-4 border-red-400";
     }
@@ -107,7 +113,7 @@ export default function Kanban() {
     <div className="py-2 sm:p-6">
       <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">🗂️ Kanban Board</h2>
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {columns.map((col) => (
             <Droppable droppableId={col.key} key={col.key}>
               {(provided) => (

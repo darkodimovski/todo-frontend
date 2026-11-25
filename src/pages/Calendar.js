@@ -7,6 +7,7 @@ import { getTodos } from "../services/api";
 const STATUS = {
   todo: { label: "Todo", className: "cal-todo" },
   "in-progress": { label: "In progress", className: "cal-progress" },
+  review: { label: "In review", className: "cal-review" },
   done: { label: "Done", className: "cal-done" },
 };
 
@@ -43,7 +44,7 @@ export default function Calendar() {
         .filter((t) => showDone || t.position !== "done")
         .map((t) => {
           const status = STATUS[t.position] || STATUS.todo;
-          const overdue = t.position !== "done" && t.dueDate < today;
+          const overdue = !["done", "review"].includes(t.position) && t.dueDate < today;
           return {
             id: String(t.id),
             title: t.title,
@@ -88,6 +89,7 @@ export default function Calendar() {
       <div className="flex flex-wrap gap-4 text-xs text-gray-600 mb-3">
         <span className="flex items-center gap-1.5"><span className="cal-dot cal-todo" /> Todo</span>
         <span className="flex items-center gap-1.5"><span className="cal-dot cal-progress" /> In progress</span>
+        <span className="flex items-center gap-1.5"><span className="cal-dot cal-review" /> In review</span>
         <span className="flex items-center gap-1.5"><span className="cal-dot cal-done" /> Done</span>
         <span className="flex items-center gap-1.5"><span className="cal-dot cal-todo cal-overdue-dot" /> Overdue</span>
       </div>
@@ -125,7 +127,7 @@ export default function Calendar() {
             <h3 className="text-lg font-semibold pr-8 break-words">{selected.title}</h3>
             <div className="text-xs text-gray-500 mt-1">
               Due {selected.dueDate} · {STATUS[selected.position]?.label || "Todo"}
-              {selected.position !== "done" && selected.dueDate < today && (
+              {!["done", "review"].includes(selected.position) && selected.dueDate < today && (
                 <span className="text-red-600 font-semibold"> · overdue</span>
               )}
             </div>

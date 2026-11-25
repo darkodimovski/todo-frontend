@@ -41,7 +41,7 @@ export default function Dashboard() {
       });
 
       const overdueTodos = fetchedTodos.filter((todo) => {
-        return todo.dueDate && new Date(todo.dueDate) < new Date() && todo.position !== "done";
+        return todo.dueDate && new Date(todo.dueDate) < new Date() && !["done", "review"].includes(todo.position);
       });
 
       setProjects(enhancedProjects);
@@ -60,6 +60,7 @@ export default function Dashboard() {
   const todoStats = {
     todo: todos.filter((t) => t.position === "todo").length,
     inProgress: todos.filter((t) => t.position === "in-progress").length,
+    review: todos.filter((t) => t.position === "review").length,
     done: todos.filter((t) => t.position === "done").length,
   };
 
@@ -86,6 +87,7 @@ export default function Dashboard() {
         <StatCard label="✅ Projects - Done" value={projectStats.done} color="bg-green-100 text-green-800" />
         <StatCard label="📝 Todos - Todo" value={todoStats.todo} color="bg-red-100 text-red-800" />
         <StatCard label="🔄 Todos - In Progress" value={todoStats.inProgress} color="bg-blue-100 text-blue-800" />
+        <StatCard label="🔍 Todos - In Review" value={todoStats.review} color="bg-yellow-100 text-yellow-800" />
         <StatCard label="✔️ Todos - Done" value={todoStats.done} color="bg-green-100 text-green-800" />
         <StatCard label="👥 Users" value={users.length} color="bg-gray-100 text-gray-800" />
         <StatCard label="⏰ Overdue Tasks" value={overdue.length} color="bg-yellow-100 text-yellow-800" />

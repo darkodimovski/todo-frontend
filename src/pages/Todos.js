@@ -2,8 +2,10 @@ import React, { useEffect, useState, useContext, useCallback } from "react";
 import { getTodos, getProjects } from "../services/api";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { jsPDF } from "jspdf";
+import HoursInput from "../components/HoursInput";
+import { getEstimates, setEstimate } from "../services/estimates";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:1337";
 
@@ -13,6 +15,7 @@ const SCOPES = [
   { key: "today", label: "Today" },
   { key: "week", label: "This week" },
   { key: "overdue", label: "Overdue" },
+  { key: "review", label: "In review" },
 ];
 
 const isoToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zagreb" }).format(new Date());
@@ -26,7 +29,21 @@ const readScope = () => {
 };
 
 export default function Todos() {
-  const { token, logout, user: currentUser } = useContext(AuthContext);
+  const { token, logout, user: currentUser, role } = useContext(AuthContext);
+  const isManager = role?.toLowerCase() === "backoffice manager";
+  const [estimates, setEstimates] = useState({});
+
+  useEffect(() => {
+    if (!isManager) return;
+    getEstimates()
+      .then(setEstimates)
+      .catch(() => {});
+  }, [isManager]);
+
+  const saveEstimate = async (documentId, hours) => {
+    const { data } = await setEstimate(documentId, hours);
+    setEstimates((e) => ({ ...e, [documentId]: data.hours }));
+  };
   const navigate = useNavigate();
 
   const [todos, setTodos] = useState([]);
@@ -40,7 +57,8 @@ export default function Todos() {
   const ITEMS_PER_PAGE = 10;
   const [showDone, setShowDone] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [scope, setScope] = useState(readScope);
+  const [searchParams] = useSearchParams();
+  const [scope, setScope] = useState(() => searchParams.get("scope") || readScope());
 
   const changeScope = (key) => {
     setScope(key);
@@ -313,6 +331,58 @@ export default function Todos() {
     }
   };
 
+  /** Manager review: approve (→ done) or return with a reason (→ in progress). */
+  const reviewTodo = async (todo, approve) => {
+    let data = { position: "done" };
+    if (!approve) {
+      const reason = window.prompt(`Why are you returning "${todo.title}"? (the assignee sees this)`);
+      if (reason === null) return;
+      const note = `[${new Date().toLocaleString()}] Returned by ${currentUser?.username}: ${reason.trim() || "needs changes"}`;
+      data = {
+        position: "in-progress",
+        descriptionHistory: todo.descriptionHistory ? `${todo.descriptionHistory}
+${note}` : note,
+      };
+    }
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/api/todos/${todo.documentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ data }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await fetchData();
+    } catch (err) {
+      setError(`Could not ${approve ? "approve" : "return"} the ToDo (${err.message}).`);
+    }
+  };
+
+  /** Assign a ToDo to yourself; the previous assignee and managers get notified. */
+  const takeOver = async (todo) => {
+    const from = todo.assignee?.username;
+    if (!window.confirm(from ? `Take over "${todo.title}" from ${from}?` : `Take "${todo.title}"?`)) return;
+    setError(null);
+    try {
+      const note = `[${new Date().toLocaleString()}] Taken over by ${currentUser?.username}${from ? ` (from ${from})` : ""}`;
+      const res = await fetch(`${API_URL}/api/todos/${todo.documentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          data: {
+            assignee: currentUser?.id,
+            descriptionHistory: todo.descriptionHistory ? `${todo.descriptionHistory}
+${note}` : note,
+          },
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await fetchData();
+    } catch (err) {
+      setError(`Could not take over the ToDo (${err.message}).`);
+    }
+  };
+
   const handleEdit = (todo) => {
     setForm({
       title: todo.title,
@@ -352,6 +422,8 @@ export default function Todos() {
         return `${base} bg-green-200 text-green-800`;
       case "in-progress":
         return `${base} bg-blue-200 text-blue-800`;
+      case "review":
+        return `${base} bg-yellow-100 text-yellow-800`;
       default:
         return `${base} bg-red-200 text-red-800`;
     }
@@ -363,6 +435,8 @@ export default function Todos() {
         return "bg-green-50";
       case "in-progress":
         return "bg-blue-50";
+      case "review":
+        return "bg-yellow-50";
       default:
         return "bg-red-50";
     }
@@ -461,7 +535,7 @@ export default function Todos() {
   })();
 
   const matchScope = (todo, key) => {
-    const open = todo.position !== "done";
+    const open = todo.position !== "done" && todo.position !== "review";
     switch (key) {
       case "mine":
         return todo.assignee?.id === currentUser?.id;
@@ -471,6 +545,8 @@ export default function Todos() {
         return open && !!todo.dueDate && todo.dueDate >= today && todo.dueDate <= weekEnd;
       case "overdue":
         return open && !!todo.dueDate && todo.dueDate < today;
+      case "review":
+        return todo.position === "review";
       default:
         return true;
     }
@@ -603,6 +679,7 @@ export default function Todos() {
             <option value="All">All Statuses</option>
             <option value="todo">Todo</option>
             <option value="in-progress">In Progress</option>
+            <option value="review">In review</option>
             <option value="done">Done</option>
           </select>
 
@@ -660,14 +737,14 @@ export default function Todos() {
         </div>
       </div>
 
-      {["todo", "in-progress", "done"].map((status) => {
+      {["todo", "in-progress", "review", "done"].map((status) => {
         const sectionTodos = paginatedTodos.filter((t) => t.position === status);
 
         if (!sectionTodos.length) return null;
 
         return (
           <div key={status} className="mb-6">
-            <h3 className="text-lg font-bold capitalize mb-2">{status}</h3>
+            <h3 className="text-lg font-bold capitalize mb-2">{status === "review" ? "In review" : status}</h3>
 
             <ul className="space-y-2">
               {sectionTodos.map((todo) => (
@@ -685,17 +762,56 @@ export default function Todos() {
                         {todo.description}
                       </div>
 
-                      <div className="font-bold text-xs text-gray-500 mt-1">
-                        Project: {todo.project?.name || "N/A"} | Assignee:{" "}
-                        {todo.assignee?.username || "N/A"}
+                      <div className="font-bold text-xs text-gray-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span>
+                          Project: {todo.project?.name || "N/A"} | Assignee:{" "}
+                          {todo.assignee?.username || "N/A"}
+                        </span>
+                        {!["done", "review"].includes(todo.position) && todo.assignee?.id !== currentUser?.id && (
+                          <button
+                            type="button"
+                            onClick={() => takeOver(todo)}
+                            className="font-semibold text-blue-600 border border-blue-300 rounded px-2 py-0.5 hover:bg-blue-50"
+                            title="Assign this ToDo to yourself"
+                          >
+                            ✋ Take it
+                          </button>
+                        )}
                       </div>
 
-                      <div className="mt-1">
-                        <span className={getStatusBadge(todo.position)}>{todo.position}</span>
-                        <span className="text-xs text-gray-400 ml-2">
-                          Due: {todo.dueDate || "N/A"}
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className={getStatusBadge(todo.position)}>
+                          {todo.position === "review" ? "in review" : todo.position}
                         </span>
+                        <span className="text-xs text-gray-400">Due: {todo.dueDate || "N/A"}</span>
+                        {isManager && todo.position === "review" && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => reviewTodo(todo, true)}
+                              className="text-xs font-semibold bg-green-600 text-white rounded px-2 py-1 hover:bg-green-700"
+                            >
+                              ✓ Approve
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => reviewTodo(todo, false)}
+                              className="text-xs font-semibold text-red-600 border border-red-300 rounded px-2 py-1 hover:bg-red-50"
+                            >
+                              ↩ Return
+                            </button>
+                          </>
+                        )}
                       </div>
+
+                      {isManager && (
+                        <div className="mt-2">
+                          <HoursInput
+                            value={estimates[todo.documentId] ?? null}
+                            onSave={(h) => saveEstimate(todo.documentId, h)}
+                          />
+                        </div>
+                      )}
 
                       {todo.descriptionHistory && (
                         <div className="mt-2 bg-gray-100 p-2 rounded text-xs whitespace-pre-line">
@@ -889,7 +1005,11 @@ export default function Todos() {
               >
                 <option value="todo">Todo</option>
                 <option value="in-progress">In Progress</option>
-                <option value="done">Done</option>
+                {/* "In review" is set automatically; workers only see it while their ToDo waits for approval */}
+                {(isManager || form.position === "review") && (
+                  <option value="review">In review (waiting for approval)</option>
+                )}
+                <option value="done">{isManager ? "Done (approved)" : "Done – send for review"}</option>
               </select>
 
               <select

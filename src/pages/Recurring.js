@@ -14,6 +14,7 @@ const emptyForm = {
   active: true,
   assignee: "",
   project: "",
+  estimatedHours: "",
 };
 
 const todayIso = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zagreb" }).format(new Date());
@@ -101,6 +102,7 @@ export default function Recurring() {
       active: rt.active !== false,
       assignee: rt.assignee?.documentId || "",
       project: rt.project?.documentId || "",
+      estimatedHours: rt.estimatedHours ?? "",
     });
     setEditingId(rt.documentId);
     setModalOpen(true);
@@ -115,6 +117,8 @@ export default function Recurring() {
       leadDays: Number(form.leadDays),
       assignee: form.assignee || null,
       project: form.project || null,
+      estimatedHours:
+        String(form.estimatedHours).trim() === "" ? null : Number(String(form.estimatedHours).replace(",", ".")),
     };
     try {
       if (editingId) await api.put(`/recurring-todos/${editingId}`, { data });
@@ -198,6 +202,7 @@ export default function Recurring() {
                 <div className="font-semibold break-words">{rt.title}</div>
                 <div className="text-xs text-gray-500 mt-0.5">
                   {scheduleText(rt)} · {leadText(rt)}
+                  {rt.estimatedHours != null ? ` · est. ${rt.estimatedHours} h each` : ""}
                   {rt.project?.name ? ` · ${rt.project.name}` : ""}
                 </div>
               </div>
@@ -305,6 +310,18 @@ export default function Recurring() {
                   <option key={u.id} value={u.documentId}>{u.username}</option>
                 ))}
               </select>
+
+              <label className="text-sm block">
+                <span className="block text-gray-600 mb-1">Estimated hours per ToDo (only managers see this)</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={form.estimatedHours}
+                  onChange={set("estimatedHours")}
+                  placeholder="e.g. 0.5"
+                  className="w-full p-2 border rounded"
+                />
+              </label>
 
               <select value={form.project} onChange={set("project")} className="w-full p-2 border rounded">
                 <option value="">Project (optional)</option>
