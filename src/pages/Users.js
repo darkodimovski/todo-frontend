@@ -5,6 +5,7 @@ import { AuthContext } from "../context/AuthContext";
 const ROLES = [
   { key: "specialist", label: "Backoffice Specialist" },
   { key: "manager", label: "Backoffice Manager" },
+  { key: "viewer", label: "Viewer (read only)" },
 ];
 
 const errorText = (err, fallback) => err?.response?.data?.error?.message || fallback;

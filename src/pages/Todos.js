@@ -31,6 +31,7 @@ const readScope = () => {
 export default function Todos() {
   const { token, logout, user: currentUser, role } = useContext(AuthContext);
   const isManager = role?.toLowerCase() === "backoffice manager";
+  const readOnly = role?.toLowerCase() === "viewer";
   const [estimates, setEstimates] = useState({});
 
   useEffect(() => {
@@ -637,12 +638,14 @@ ${note}` : note,
             {showDone ? "Hide Done" : "Show Done"}
           </button>
 
-          <button
-            onClick={resetFormAndOpenModal}
-            className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 text-sm sm:text-base"
-          >
-            + Add ToDo
-          </button>
+          {!readOnly && (
+            <button
+              onClick={resetFormAndOpenModal}
+              className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 text-sm sm:text-base"
+            >
+              + Add ToDo
+            </button>
+          )}
         </div>
       </div>
 
@@ -767,7 +770,7 @@ ${note}` : note,
                           Project: {todo.project?.name || "N/A"} | Assignee:{" "}
                           {todo.assignee?.username || "N/A"}
                         </span>
-                        {!["done", "review"].includes(todo.position) && todo.assignee?.id !== currentUser?.id && (
+                        {!readOnly && !["done", "review"].includes(todo.position) && todo.assignee?.id !== currentUser?.id && (
                           <button
                             type="button"
                             onClick={() => takeOver(todo)}
@@ -848,18 +851,22 @@ ${note}` : note,
                       >
                         Export PDF
                       </button>
-                      <button
-                        onClick={() => handleEdit(todo)}
-                        className="text-blue-600 text-sm"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(todo.documentId)}
-                        className="text-red-600 text-sm"
-                      >
-                        Delete
-                      </button>
+                      {!readOnly && (
+                        <>
+                          <button
+                            onClick={() => handleEdit(todo)}
+                            className="text-blue-600 text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(todo.documentId)}
+                            className="text-red-600 text-sm"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </li>

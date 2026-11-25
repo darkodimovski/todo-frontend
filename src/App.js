@@ -39,11 +39,14 @@ export default function App() {
   const { token, role, user, logout } = useContext(AuthContext);
   const superUser = role?.toLowerCase() === "backoffice manager";
   const backofficeSpecialist = role?.toLowerCase() === "backoffice specialist";
+  const viewer = role?.toLowerCase() === "viewer";
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const canSee = (access) =>
-    access === "all" || (access === "bo" && (superUser || backofficeSpecialist)) || (access === "manager" && superUser);
+    access === "all" ||
+    (access === "bo" && (superUser || backofficeSpecialist || viewer)) ||
+    (access === "manager" && superUser);
   const visible = PAGES.filter((p) => canSee(p.access) && !p.hidden);
 
   const handleLogout = async () => {
@@ -138,6 +141,14 @@ export default function App() {
             </div>
           )}
         </nav>
+      )}
+
+      {token && viewer && (
+        <div className="container mx-auto px-3 sm:px-4 -mt-2 mb-4">
+          <div className="text-sm bg-yellow-100 text-yellow-800 rounded px-3 py-2">
+            👀 Read-only account – you can look around, but not change anything.
+          </div>
+        </div>
       )}
 
       <main className="container mx-auto px-3 sm:px-4 pb-8">
