@@ -421,7 +421,28 @@ export default function Projects() {
                 required
               />
                 <div className="border rounded p-3 max-h-40 overflow-y-auto space-y-2">
-                <p className="text-sm font-medium text-gray-700 mb-2">Select Clients</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-700">
+                    Select Clients ({form.clients.length}/{clients.length})
+                  </p>
+                  {clients.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm({
+                          ...form,
+                          clients:
+                            form.clients.length === clients.length
+                              ? []
+                              : clients.map((c) => c.documentId || c.id),
+                        })
+                      }
+                      className="text-xs text-blue-600 underline"
+                    >
+                      {form.clients.length === clients.length ? "Clear all" : "Select all"}
+                    </button>
+                  )}
+                </div>
                 {clients.map((client) => (
                   <label
                     key={client.documentId || client.id}
