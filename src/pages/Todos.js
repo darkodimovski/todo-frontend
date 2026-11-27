@@ -53,6 +53,7 @@ export default function Todos() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTodoDocId, setEditingTodoDocId] = useState(null);
   const [error, setError] = useState(null);
+  const [approving, setApproving] = useState(null); // ToDo in the "Approve" dialog
 
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
@@ -333,9 +334,17 @@ export default function Todos() {
   };
 
   /** Manager review: approve (→ done) or return with a reason (→ in progress). */
-  const reviewTodo = async (todo, approve) => {
+  const reviewTodo = async (todo, approve, checkNote = "") => {
     let data = { position: "done" };
-    if (!approve) {
+    if (approve) {
+      const text = checkNote.trim();
+      const note = `[${new Date().toLocaleString()}] ✔ Checked by ${currentUser?.username}${text ? `: ${text}` : ""}`;
+      data = {
+        position: "done",
+        checkNote: text,
+        descriptionHistory: todo.descriptionHistory ? `${todo.descriptionHistory}\n${note}` : note,
+      };
+    } else {
       const reason = window.prompt(`Why are you returning "${todo.title}"? (the assignee sees this)`);
       if (reason === null) return;
       const note = `[${new Date().toLocaleString()}] Returned by ${currentUser?.username}: ${reason.trim() || "needs changes"}`;
@@ -353,6 +362,7 @@ ${note}` : note,
         body: JSON.stringify({ data }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setApproving(null);
       await fetchData();
     } catch (err) {
       setError(`Could not ${approve ? "approve" : "return"} the ToDo (${err.message}).`);
@@ -619,6 +629,14 @@ ${note}` : note,
         <div className="mb-4 p-2 rounded bg-red-100 text-red-700 text-sm">{error}</div>
       )}
 
+      {approving && (
+        <ApproveDialog
+          todo={approving}
+          onCancel={() => setApproving(null)}
+          onApprove={(note) => reviewTodo(approving, true, note)}
+        />
+      )}
+
       <div className="mb-4 flex flex-wrap justify-between items-center gap-3">
         <h2 className="text-xl sm:text-2xl font-semibold">Todos</h2>
 
@@ -791,7 +809,7 @@ ${note}` : note,
                           <>
                             <button
                               type="button"
-                              onClick={() => reviewTodo(todo, true)}
+                              onClick={() => setApproving(todo)}
                               className="text-xs font-semibold bg-green-600 text-white rounded px-2 py-1 hover:bg-green-700"
                             >
                               ✓ Approve
@@ -813,6 +831,14 @@ ${note}` : note,
                             value={estimates[todo.documentId] ?? null}
                             onSave={(h) => saveEstimate(todo.documentId, h)}
                           />
+                        </div>
+                      )}
+
+                      {todo.position === "done" && todo.checkedBy && (
+                        <div className="mt-2 border border-green-300 bg-green-50 text-green-800 p-2 rounded text-xs">
+                          <strong>✔ Checked by manager:</strong> {todo.checkedBy}
+                          {todo.checkedAt && <span> · {new Date(todo.checkedAt).toLocaleString()}</span>}
+                          {todo.checkNote && <div className="mt-1 whitespace-pre-line break-words">{todo.checkNote}</div>}
                         </div>
                       )}
 
@@ -1204,6 +1230,74 @@ ${note}` : note,
           )}
         </div>
       )}
+    </div>
+  );
+}
+const CHECK_SUGGESTIONS = [
+  "Opened and reviewed – all OK, no issues.",
+  "Checked – correct and complete.",
+  "Approved with minor remarks.",
+];
+
+/** Manager approval with a short "what was checked" note. */
+function ApproveDialog({ todo, onCancel, onApprove }) {
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    await onApprove(note);
+    setBusy(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-center items-start sm:items-center p-3 sm:p-6 overflow-y-auto">
+      <form onSubmit={submit} className="bg-white w-full max-w-md rounded-lg shadow-lg p-4 sm:p-6 relative my-4 sm:my-0 space-y-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="absolute top-2 right-2 w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-700 text-2xl"
+        >
+          &times;
+        </button>
+        <h2 className="text-xl font-semibold pr-8">Approve "{todo.title}"</h2>
+        <p className="text-sm text-gray-600">
+          What did you check? The assignee sees this note under "Checked by manager".
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {CHECK_SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setNote(s)}
+              className="text-xs border border-green-300 rounded px-2 py-1 hover:bg-green-50"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={4}
+          autoFocus
+          placeholder="e.g. Daily report opened and reviewed, numbers match, no issues."
+          className="w-full p-2 border rounded"
+        />
+        <div className="flex gap-2 justify-end">
+          <button type="button" onClick={onCancel} className="px-4 py-2 rounded border text-sm">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={busy}
+            className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 disabled:opacity-50"
+          >
+            {busy ? "Saving..." : "✓ Approve"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
